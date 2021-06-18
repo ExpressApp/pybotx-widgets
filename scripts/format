@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -e
+
+isort --recursive  --force-single-line-imports pybotx_widgets
+autoflake --recursive --remove-all-unused-imports --remove-unused-variables --in-place pybotx_widgets
+black pybotx_widgets
+isort --recursive pybotx_widgets

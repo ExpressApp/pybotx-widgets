@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+set -e
+set -x
+
+
+mypy pybotx_widgets
+flake8 pybotx_widgets
+
+black --check pybotx_widgets --diff
+isort --recursive --check-only pybotx_widgets
