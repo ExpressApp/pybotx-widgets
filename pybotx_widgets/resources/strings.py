@@ -65,6 +65,9 @@ SELECT_DATE = "Выберите дату"
 # ========
 
 SELECTED_VALUE_LABEL = "{label} {selected_val}"
+CHOOSE_LABEL = "Выбрать"
+FILL_LABEL = "Ввести"
+EMPTY = "[Пусто]"
 
 LEFT_ARROW = "⬅️"
 RIGHT_ARROW = "➡️"
