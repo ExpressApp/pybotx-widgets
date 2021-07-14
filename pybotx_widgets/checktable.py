@@ -43,13 +43,30 @@ class CheckboxContent(BaseModel, Generic[T]):
         return values
 
 
+def get_value_text(checkbox: CheckboxContent) -> str:
+    """Get value text for button."""
+    if checkbox.checkbox_value is None:
+        return strings.EMPTY
+
+    is_undefined = isinstance(checkbox.checkbox_value, Undefined)
+
+    if checkbox.mapping:
+        if is_undefined:
+            return strings.CHOOSE_LABEL
+        return checkbox.mapping[checkbox.checkbox_value]
+
+    if is_undefined:
+        return strings.FILL_LABEL
+
+    return checkbox.checkbox_value
+
+
 def add_checkboxes(checkboxes: List[CheckboxContent]) -> MessageMarkup:
     """Add checkbox."""
     markup = MessageMarkup()
 
     for checkbox in checkboxes:
-        if checkbox.data is None:
-            checkbox.data = {}  # noqa: WPS110
+        checkbox.data = checkbox.data or {}
 
         if isinstance(checkbox.checkbox_value, Undefined):
             checkbox_status = strings.CHECKBOX_UNCHECKED
@@ -58,20 +75,7 @@ def add_checkboxes(checkboxes: List[CheckboxContent]) -> MessageMarkup:
 
         checkbox_text = f"{checkbox_status} {checkbox.label}"
 
-        if checkbox.checkbox_value is None:
-            value_text = strings.EMPTY
-        else:
-            if checkbox.mapping:
-                if not isinstance(checkbox.checkbox_value, Undefined):
-                    value_text = checkbox.mapping[checkbox.checkbox_value]
-                else:
-                    value_text = strings.CHOOSE_LABEL
-
-            else:
-                if not isinstance(checkbox.checkbox_value, Undefined):
-                    value_text = checkbox.checkbox_value
-                else:
-                    value_text = strings.FILL_LABEL
+        value_text = get_value_text(checkbox)
 
         markup.add_bubble(checkbox.command, checkbox_text, data=checkbox.data)
         markup.add_bubble(
