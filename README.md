@@ -41,6 +41,11 @@
 ![calendar_img](pybotx_widgets/images/pagination.png?raw=true "Pagination")
 
 ---
+
+### Виджет Checktable
+![checktable_img](pybotx_widgets/images/checktable.png?raw=true "Checktable")
+
+---
 ### Пример использования виджета Carousel:
 
 ```python
@@ -176,6 +181,51 @@ async def some_command(message: Message, bot: Bot) -> None:
 ```
 Если виджет должен обновить уже отправленное сообщение, то добавьте в `message.command.data` ключ `message_id` 
 с UUID сообщения, которое нужно обновить
+
+---
+
+### Пример использования виджета Checktable:
+
+```python
+from pybotx_widgets.checktable import checktable
+
+...
+
+@collector.handler(command="/some_command")
+async def some_command(message: Message, bot: Bot) -> None:
+    await checktable(
+        message,
+        bot,
+        content,  # All content to be displayed: List[CheckboxContent]
+        label, # Text of message
+        "uncheck_command", # Command for handler which uncheck value         
+        "some_command",  # Command for bubbles command attribute
+        additional_markup  # Additional markup for attaching to widget
+    )
+```
+Для корректной работы виджета нужно создать хэндлер с командой `uncheck_command` и прописать в нем поведение при сбрасывании значения.
+
+#### Пример хэндлера:
+
+```python
+from pybotx_widgets.checktable import checktable
+from pybotx_widgets.undefined import undefined
+
+...
+
+UNCHECK_COMMAND = "/_checkbox:uncheck"
+
+@collector.hidden(command=UNCHECK_COMMAND)
+async def checkbox_uncheck(message: Message, bot: Bot) -> None:
+    field_name = message.data.get("field_name")
+    my_object = await get_my_object()
+    
+    setattr(my_object, field_name, undefined)
+    await set_my_object(my_object)
+        
+    checkboxes = await build_checkboxes(my_object)
+    await checktable(message, bot, my_object, "some_label", UNCHECK_COMMAND)
+```
 
 ---
 

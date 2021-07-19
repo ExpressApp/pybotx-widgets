@@ -61,7 +61,7 @@ def get_value_text(checkbox: CheckboxContent) -> str:
     return checkbox.checkbox_value
 
 
-def add_checkboxes(checkboxes: List[CheckboxContent]) -> MessageMarkup:
+def add_checkboxes(checkboxes: List[CheckboxContent], uncheck_command: str) -> MessageMarkup:
     """Add checkbox."""
     markup = MessageMarkup()
 
@@ -77,7 +77,7 @@ def add_checkboxes(checkboxes: List[CheckboxContent]) -> MessageMarkup:
 
         value_text = get_value_text(checkbox)
 
-        markup.add_bubble(checkbox.command, checkbox_text, data=checkbox.data)
+        markup.add_bubble(uncheck_command, checkbox_text, data=checkbox.data)
         markup.add_bubble(
             checkbox.command, value_text, new_row=False, data=checkbox.data
         )
@@ -90,6 +90,7 @@ async def checktable(
     bot: Bot,
     checkboxes: List[CheckboxContent],
     label: str,
+    uncheck_command: str,
     additional_markup: MessageMarkup = None,
 ) -> None:
     """Create checktable widget.
@@ -98,10 +99,11 @@ async def checktable(
     :param bot - botx Bot
     :param checkboxes - All content to be displayed
     :param label - Text of message
+    :param uncheck_command - Command for handler which uncheck value
     :param additional_markup - Additional markup for attaching to widget
     """
 
-    markup = add_checkboxes(checkboxes)
+    markup = add_checkboxes(checkboxes, uncheck_command)
 
     if additional_markup:
         markup = merge_markup(markup, additional_markup)
