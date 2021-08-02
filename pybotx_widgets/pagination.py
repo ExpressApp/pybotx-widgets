@@ -5,7 +5,6 @@ from typing import Iterator, List, Tuple
 from uuid import UUID, uuid4
 
 from botx import Bot, File, Message, MessageMarkup
-
 from pybotx_widgets.resources import strings
 from pybotx_widgets.service import merge_markup, send_or_update_message
 
@@ -32,7 +31,10 @@ async def pagination(
     if len(widget_content) <= paginate_by:
         for widget_message in widget_content:
             await bot.answer_message(
-                widget_message.text, message, markup=widget_message.markup, file=widget_message.file
+                widget_message.text,
+                message,
+                markup=widget_message.markup,
+                file=widget_message.file,
             )
         return
 
@@ -45,9 +47,7 @@ async def pagination(
         command, start_from, len(widget_content), paginate_by, message_ids
     )
     display_content = widget_content[start_from : start_from + paginate_by]
-    display_content: PaginatedContent = zip_longest(
-        message_ids, display_content
-    )
+    display_content: PaginatedContent = zip_longest(message_ids, display_content)
 
     for message_id, widget_message in display_content:
         if "message_id" in message.data:

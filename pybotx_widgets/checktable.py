@@ -1,11 +1,10 @@
-from typing import Any, Dict, List, Optional, TypeVar, Generic, Union
+from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
 from botx import Bot, Message, MessageMarkup
-from pydantic import root_validator, BaseModel
-
 from pybotx_widgets.resources import strings
 from pybotx_widgets.service import merge_markup, send_or_update_message
 from pybotx_widgets.undefined import Undefined, undefined
+from pydantic import BaseModel, root_validator
 
 T = TypeVar("T")  # noqa: WPS111
 
@@ -32,9 +31,9 @@ class CheckboxContent(BaseModel, Generic[T]):
         mapping = values.get("mapping")
         checkbox_value = values.get("checkbox_value")
         if (
-                mapping
-                and not isinstance(checkbox_value, Undefined)
-                and checkbox_value not in mapping
+            mapping
+            and not isinstance(checkbox_value, Undefined)
+            and checkbox_value not in mapping
         ):
             raise ValueError(
                 f"'mapping' should contains 'checkbox_value' - '{checkbox_value}'"
@@ -61,7 +60,9 @@ def get_value_text(checkbox: CheckboxContent) -> str:
     return checkbox.checkbox_value
 
 
-def add_checkboxes(checkboxes: List[CheckboxContent], uncheck_command: str) -> MessageMarkup:
+def add_checkboxes(
+    checkboxes: List[CheckboxContent], uncheck_command: str
+) -> MessageMarkup:
     """Add checkbox."""
     markup = MessageMarkup()
 
