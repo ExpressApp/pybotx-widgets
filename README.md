@@ -98,21 +98,22 @@ carousel_result = get_carousel_result(message, bot)
 ### Пример использования виджета Calendar:
 
 ```python
-from pybotx_widgets.calendar import calendar
+from pybotx_widgets.calendar import CalendarWidget
 
 ...
 
 @collector.handler(command="/some_command", name="some_command_name")
 async def some_command(message: Message, bot: Bot) -> None:
-    selected_value = await calendar(
+    calendar_widget = CalendarWidget(
         message, 
-        bot,
         start_date: date = None,  # Calendar start date, previews dates hides, default date.today()
         end_date: date = date.max,  # Calendar end date, next dates hides, default date.max
         command_name="some_command_name",  # Arg for 'bot.command_for()' method. Used for bubbles 'command' attribute
         include_past=False,  # Include past dates in calendar, default is False
+        bot=bot,
         additional_markup=None  # Additional markup for attaching to widget, default None
     )
+    selected_value = await calendar_widget.display()
 
     if selected_value:
         ...  #  do something

@@ -2,7 +2,6 @@
 from typing import Any, List, Sequence
 
 from botx import Bot, BubbleElement, Message, MessageMarkup
-
 from pybotx_widgets.resources import strings
 from pybotx_widgets.service import merge_markup, send_or_update_message
 
