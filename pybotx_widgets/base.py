@@ -28,4 +28,4 @@ class Widget:
         self.additional_markup = additional_markup
 
     async def display(self) -> Optional[Any]:
-        raise NotImplemented
+        raise NotImplementedError
