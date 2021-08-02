@@ -51,7 +51,7 @@ class BubblesMixin:
             self.markup.add_bubble(
                 command=f"{self.command} {self.LEFT_ARROW}",
                 label=self.LEFT_ARROW,
-                data={**self.message.data, "calendar_current_date": prev_year},
+                data={**self.message.data, MONTH_TO_DISPLAY_KEY: prev_year},
             )
 
         self.markup.add_bubble(
@@ -70,7 +70,7 @@ class BubblesMixin:
             self.markup.add_bubble(
                 command=f"{self.command} {self.RIGHT_ARROW}",
                 label=self.RIGHT_ARROW,
-                data={**self.message.data, "calendar_current_date": next_year},
+                data={**self.message.data, MONTH_TO_DISPLAY_KEY: next_year},
                 new_row=False,
             )
 
@@ -100,7 +100,7 @@ class BubblesMixin:
             self.markup.add_bubble(
                 command=f"{self.command} {self.LEFT_ARROW}",
                 label=self.LEFT_ARROW,
-                data={**self.message.data, "calendar_current_date": prev_month},
+                data={**self.message.data, MONTH_TO_DISPLAY_KEY: prev_month},
             )
         self.markup.add_bubble(
             command="",
@@ -118,7 +118,7 @@ class BubblesMixin:
             self.markup.add_bubble(
                 command=f"{self.command} {self.RIGHT_ARROW}",
                 label=self.RIGHT_ARROW,
-                data={**self.message.data, "calendar_current_date": next_month},
+                data={**self.message.data, MONTH_TO_DISPLAY_KEY: next_month},
                 new_row=False,
             )
 
@@ -160,7 +160,7 @@ class BubblesMixin:
                     label = str(calendar_date.day)
                     bubble_data = {
                         **self.message.data,
-                        "calendar_selected_date": calendar_date,
+                        SELECTED_DATE_KEY: calendar_date,
                     }
                     bubble_command = f"{self.command} {calendar_date}"
 
