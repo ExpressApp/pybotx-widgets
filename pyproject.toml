@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pybotx-widgets"
-version = "0.4.3"
+version = "0.5.3"
 description = "Widgets for pybotx"
 authors = ["Tamirlan Dzhemirzoev", "Alexandr Samojlenko", "Vladimir Karabanov", "Samat Yunusov"]
 

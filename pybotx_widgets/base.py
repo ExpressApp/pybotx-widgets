@@ -4,11 +4,6 @@ from botx import Bot, Message, MessageMarkup
 
 
 class Widget:
-    message: Message
-    bot: Bot
-    command: str
-    additional_markup: MessageMarkup = None
-
     def __init__(
         self,
         message: Message,
@@ -28,4 +23,8 @@ class Widget:
         self.additional_markup = additional_markup
 
     async def display(self) -> Optional[Any]:
+        raise NotImplementedError
+
+    @classmethod
+    async def get_value(cls, message: Message, bot: Bot) -> Any:
         raise NotImplementedError

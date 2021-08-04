@@ -9,7 +9,7 @@ from typing import Dict, List, Tuple, Optional, Any
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 
-from botx import BubbleElement, Message, MessageMarkup
+from botx import BubbleElement, Message, MessageMarkup, Bot
 from pybotx_widgets.base import Widget
 from pybotx_widgets.resources import strings
 from pybotx_widgets.service import merge_markup, send_or_update_message
@@ -18,7 +18,7 @@ MONTH_TO_DISPLAY_KEY = "calendar_month_to_display"
 SELECTED_DATE_KEY = "calendar_selected_date"
 
 
-class BubblesMixin:
+class MarkupMixin:
     message: Message
     command: str
 
@@ -182,15 +182,11 @@ class BubblesMixin:
                 self.markup.bubbles.append(calendar_dates_row)
 
 
-class CalendarWidget(Widget, BubblesMixin):
-    start_date: date = None
-    end_date: date = date.max
-    include_past: bool = False
-
+class CalendarWidget(Widget, MarkupMixin):
     LEFT_ARROW = strings.LEFT_ARROW
     RIGHT_ARROW = strings.RIGHT_ARROW
-    AFTER_SELECT_TEXT = strings.CAL_DATE_SELECTED
     SELECT_DATE = strings.SELECT_DATE
+    DATE_SELECTED_TEXT = strings.CAL_DATE_SELECTED
     WEEKDAYS = strings.WEEKDAYS
     MONTHS = strings.MONTHS
 
@@ -218,28 +214,19 @@ class CalendarWidget(Widget, BubblesMixin):
         self.month_to_display = self.message.data.get(MONTH_TO_DISPLAY_KEY)
         self.selected_date = self.message.data.get(SELECTED_DATE_KEY)
 
-    def _clear_calendar_data(self) -> None:
-        """Clear widget data form message.data."""
-
-        self.message.data.pop(MONTH_TO_DISPLAY_KEY, None)
-        self.message.data.pop(SELECTED_DATE_KEY, None)
-
-    async def get_value(self) -> date:
+    @classmethod
+    async def get_value(cls, message: Message, bot: Bot) -> date:
+        selected_date = message.data[SELECTED_DATE_KEY]
         try:
-            selected_date = parser.parse(self.selected_date).date()
+            selected_date = parser.parse(selected_date).date()
         except parser.ParserError:  # type: ignore
             raise RuntimeError("Date is not selected.")
 
-        self._clear_calendar_data()
+        _clear_calendar_data(message)
         # Remove buttons
-        await self.update_after_select()
+        await send_or_update_message(message, bot, cls.DATE_SELECTED_TEXT)
 
         return selected_date
-
-    async def update_after_select(self):
-        """Update last calendar message, after user selects date."""
-
-        await send_or_update_message(self.message, self.bot, self.AFTER_SELECT_TEXT)
 
     def get_prev_and_next_year(self) -> Tuple[date, date]:
         month = 1 if self.include_past else date.today().month
@@ -264,7 +251,7 @@ class CalendarWidget(Widget, BubblesMixin):
             self.current_date = parser.parse(self.month_to_display).date()
 
         elif self.selected_date:
-            return await self.get_value()
+            return await self.get_value(self.message, self.bot)
 
         self.add_year_bubbles()
         self.add_month_bubbles()
@@ -277,3 +264,10 @@ class CalendarWidget(Widget, BubblesMixin):
         await send_or_update_message(
             self.message, self.bot, self.SELECT_DATE, self.markup
         )
+
+
+def _clear_calendar_data(message: Message) -> None:
+    """Clear widget data form message.data."""
+
+    message.data.pop(MONTH_TO_DISPLAY_KEY, None)
+    message.data.pop(SELECTED_DATE_KEY, None)

@@ -1,317 +1,324 @@
 """Carousel widget."""
 
 import string
-from collections import namedtuple
 from itertools import cycle, islice
 from typing import Iterator, Optional, Sequence, Tuple
 
 from botx import Bot, BubbleElement, Message, MessageMarkup
+
+from pybotx_widgets.base import Widget
 from pybotx_widgets.resources import strings
 from pybotx_widgets.service import merge_markup, send_or_update_message
 
-PaginationInfo = namedtuple(
-    "PaginationInfo", ("start", "end", "page_len", "content_len")
-)
 
 LEFT_PRESSED = "CAROUSEL_LEFT_BUTTON_PRESSED"
 RIGHT_PRESSED = "CAROUSEL_RIGHT_BUTTON_PRESSED"
 
+START_FROM_KEY = "carousel_start_from"
+SELECTED_VALUE_KEY = "carousel_selected_val"
+SELECTED_VALUE_LABEL_KEY = "carousel_selected_value_label"
+MESSAGE_LABEL_KEY = "carousel_message_label"
 
-async def carousel(  # noqa: WPS211
-    message: Message,
-    bot: Bot,
-    widget_content: Sequence,
-    label: str,
-    command: str,
-    start_from: int = 0,
-    displayed_content_count: int = 3,
-    selected_value_label: str = strings.SELECTED_VALUE_LABEL,
-    control_labels: Tuple[str, str] = None,
-    inline: bool = True,
-    loop: bool = True,
-    show_numbers: bool = False,
-    additional_markup: MessageMarkup = None,
-) -> Optional[str]:
-    """Show carousel or return selected value.
 
-    :param message - botx Message
-    :param bot - botx Bot
-    :param widget_content - All content to be displayed
-    :param label - Text of message
-    :param command - Used for bubbles 'command' attribute
-    :param start_from - Start display content from
-    :param displayed_content_count - Count of content to be displayed
-    :param selected_value_label - Display format of the selected value,
-    default = "{label} {selected_val}"
-    :param control_labels - Override default control labels.
-    :param inline - Inline mode
-    :param loop - Loop content or not
-    :param show_numbers - Show content order numbers
-    for prev/next control bubbles' labels.
-    :param additional_markup - Additional markup for attaching to widget
-    """
+class ValidationMixin:
+    LEFT_ARROW: str
+    RIGHT_ARROW: str
 
-    if "{selected_val}" not in selected_value_label:
-        raise ValueError("'selected_value_label' should contains '{selected_val}'")
+    widget_content: Sequence
+    SELECTED_VALUE_LABEL: str
+    _start_from: int
+    loop: bool
+    inline: bool
+    show_numbers: bool
 
-    if start_from > len(widget_content):
-        raise ValueError("'start_from' is greater than 'widget_content'")
+    def _is_valid_label_for_placing_numbers(self, label: str) -> bool:
+        number_places = list(string.Formatter().parse(label))
 
-    if loop and show_numbers:
-        raise ValueError("Sorry, you can't enable both 'loop' and 'show_numbers'")
+        if len([place for place in number_places if place[1] == ""]) != 2:
+            return False
 
-    if inline and show_numbers:
-        raise ValueError("Sorry, you can't enable both 'inline' and 'show_numbers'")
+        return True
 
-    if not control_labels:
-        control_labels = (
-            (f"{strings.LEFT_ARROW} ({{}}-{{}})", f"{strings.RIGHT_ARROW} ({{}}-{{}})")
-            if show_numbers
-            else (strings.LEFT_ARROW, strings.RIGHT_ARROW)
+    def _validate_params(self) -> None:
+        if "{selected_val}" not in self.SELECTED_VALUE_LABEL:
+            raise ValueError("'SELECTED_VALUE_LABEL' should contains '{selected_val}'")
+
+        if self._start_from > len(self.widget_content):
+            raise ValueError("'start_from' is greater than 'widget_content'")
+
+        if self.loop and self.show_numbers:
+            raise ValueError("Sorry, you can't enable both 'loop' and 'show_numbers'")
+
+        if self.inline and self.show_numbers:
+            raise ValueError("Sorry, you can't enable both 'inline' and 'show_numbers'")
+
+        if not self.control_labels:
+            self.control_labels = (
+                (f"{self.LEFT_ARROW} ({{}}-{{}})", f"{self.RIGHT_ARROW} ({{}}-{{}})")
+                if self.show_numbers
+                else (self.LEFT_ARROW, self.RIGHT_ARROW)
+            )
+
+        if self.show_numbers:
+            if not self._is_valid_label_for_placing_numbers(self.control_labels[0]):
+                raise ValueError("Left control label should have exactly two '{}'")
+
+            if not self._is_valid_label_for_placing_numbers(self.control_labels[1]):
+                raise ValueError("Right control label should have exactly two '{}'")
+
+
+class MarkupMixin:
+    displayed_content: Iterator
+
+    widget_content: Sequence
+    displayed_content_count: int
+    start_from: int
+    _start_from: int
+    end: int
+    control_labels: Tuple[str, str]
+    loop: bool
+    show_numbers: bool
+
+    message: Message
+    command: str
+    additional_markup: MessageMarkup
+    markup: MessageMarkup
+
+    def get_left_and_right_button_visibility(self) -> Tuple[bool, bool]:
+        if len(self.widget_content) <= self.displayed_content_count:
+            # if all content displayed, then hide arrows
+            return False, False
+        elif self.loop:
+            # always show arrows
+            return True, True
+        else:
+            content_len = len(self.widget_content)
+            return (self.start_from > 0), (self.end < content_len)
+
+    def add_inline_markup(self) -> None:
+        """Build inline markup for Carousel widget."""
+        show_left_arrow, show_right_arrow = self.get_left_and_right_button_visibility()
+
+        if show_left_arrow:
+            self.markup.add_bubble(
+                command=self.message.command.command,
+                label=self.control_labels[0],
+                data={**self.message.data, SELECTED_VALUE_KEY: LEFT_PRESSED},
+                new_row=False,
+            )
+
+        for content_item in self.displayed_content:
+            self.markup.add_bubble(
+                command=self.command,
+                label=content_item,
+                data={**self.message.data, SELECTED_VALUE_KEY: content_item},
+                new_row=False,
+            )
+
+        if show_right_arrow:
+            self.markup.add_bubble(
+                command=self.message.command.command,
+                label=self.control_labels[1],
+                data={**self.message.data, SELECTED_VALUE_KEY: RIGHT_PRESSED},
+                new_row=False,
+            )
+
+        if self.additional_markup:
+            self.markup = merge_markup(self.markup, self.additional_markup)
+
+    def add_newline_markup(self) -> None:
+        """Build newline markup for Carousel widget."""
+
+        show_left_arrow, show_right_arrow = self.get_left_and_right_button_visibility()
+        content_len = len(self.widget_content)
+        right_label = self.control_labels[1]
+
+        if self.show_numbers:
+            right_bound = self.end + self.displayed_content_count
+            if content_len < right_bound:
+                right_bound = content_len
+
+            right_label = right_label.format(self.end + 1, right_bound)
+
+        right_arrow_bubble = {
+            "command": self.message.command.command,
+            "label": right_label,
+            "data": {**self.message.data, SELECTED_VALUE_KEY: RIGHT_PRESSED},
+        }
+
+        for content_item in self.displayed_content:
+            if isinstance(content_item, (list, tuple, set)):
+                self.markup.bubbles.append(
+                    [
+                        BubbleElement(
+                            command=self.command,
+                            label=row_item,
+                            data={**self.message.data, SELECTED_VALUE_KEY: row_item},
+                        )
+                        for row_item in content_item
+                    ]
+                )
+                continue
+
+            self.markup.bubbles.append(
+                [
+                    BubbleElement(
+                        command=self.command,
+                        label=content_item,
+                        data={**self.message.data, SELECTED_VALUE_KEY: content_item},
+                    )
+                ]
+            )
+
+        if show_left_arrow:
+            left_label = self.control_labels[0]
+
+            if self.show_numbers:
+                left_bound = self.start_from - self.displayed_content_count + 1
+                left_label = left_label.format(left_bound, self.start_from)
+
+            self.markup.add_bubble(
+                command=self.message.command.command,
+                label=left_label,
+                data={**self.message.data, SELECTED_VALUE_KEY: LEFT_PRESSED},
+            )
+            # if left arrow displayed, then show right arrow inline
+            right_arrow_bubble["new_row"] = False
+
+        if show_right_arrow:
+            self.markup.add_bubble(**right_arrow_bubble)
+
+        if self.additional_markup:
+            self.markup = merge_markup(self.markup, self.additional_markup)
+
+
+class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
+    LEFT_ARROW = strings.LEFT_ARROW
+    RIGHT_ARROW = strings.RIGHT_ARROW
+    # Display format of the selected value, default = "{label} {selected_val}"
+    SELECTED_VALUE_LABEL = strings.SELECTED_VALUE_LABEL
+
+    def __init__(
+        self,
+        widget_content: Sequence,
+        label: str,
+        start_from: int = 0,
+        displayed_content_count: int = 3,
+        control_labels: Tuple[str, str] = None,
+        inline: bool = True,
+        loop: bool = True,
+        show_numbers: bool = False,
+        *args,
+        **kwargs
+    ) -> None:
+        """
+        :param widget_content - All content to be displayed
+        :param label - Text of message
+        :param start_from - Start display content from
+        :param displayed_content_count - Count of content to be displayed
+        :param control_labels - Override default control labels.
+        :param inline - Inline mode
+        :param loop - Loop content or not
+        :param show_numbers - Show content order numbers
+        for prev/next control bubbles' labels.
+        """
+        super().__init__(*args, **kwargs)
+
+        self.widget_content = widget_content
+        self.label = label
+        self._start_from = start_from
+        self.displayed_content_count = displayed_content_count
+        self.control_labels = control_labels
+        self.inline = inline
+        self.loop = loop
+        self.show_numbers = show_numbers
+        self._validate_params()
+
+        self.selected_val = self.message.data.pop(SELECTED_VALUE_KEY, "")
+        self._start_from = self.message.data.get(START_FROM_KEY, start_from)
+        self.markup = MessageMarkup()
+
+        if self.selected_val == LEFT_PRESSED:
+            self._start_from -= displayed_content_count
+        elif self.selected_val == RIGHT_PRESSED:
+            self._start_from += displayed_content_count
+
+        # Set current position in message.data
+        self.message.data[START_FROM_KEY] = self._start_from
+
+        # Set selected_value_label and carousel_message_label for get_carousel_result
+        self.message.data[SELECTED_VALUE_LABEL_KEY] = self.SELECTED_VALUE_LABEL
+        self.message.data[MESSAGE_LABEL_KEY] = self.label
+
+    @property
+    def start_from(self) -> int:
+        """Count start position."""
+
+        content_len = len(self.widget_content)
+        if self._start_from < 0 or self._start_from > content_len:
+            return abs(content_len - abs(self._start_from))
+
+        return self._start_from
+
+    @property
+    def end(self) -> int:
+        """Count end position."""
+
+        return self.start_from + self.displayed_content_count
+
+    @property
+    def is_value_selected(self) -> bool:
+        return self.selected_val and self.selected_val not in (LEFT_PRESSED, RIGHT_PRESSED)
+
+    @property
+    def displayed_content(self) -> Iterator:
+        if self.loop:
+            # Loop content
+            return islice(cycle(self.widget_content), self.start_from, self.end)
+
+        return islice(self.widget_content, self.start_from, self.end)
+
+    @classmethod
+    async def get_value(cls, message: Message, bot: Bot) -> Optional[str]:
+        selected_val = message.data[SELECTED_VALUE_KEY]
+        label = message.data[MESSAGE_LABEL_KEY]
+
+        if not selected_val or selected_val in {LEFT_PRESSED, RIGHT_PRESSED}:
+            return
+
+        msg_text = cls.SELECTED_VALUE_LABEL.format(
+            label=label,
+            selected_val=selected_val
         )
-
-    if show_numbers:
-        if not _is_valid_label_for_placing_numbers(control_labels[0]):
-            raise ValueError("Left control label should have exactly two '{}'")
-
-        if not _is_valid_label_for_placing_numbers(control_labels[1]):
-            raise ValueError("Right control label should have exactly two '{}'")
-
-    # Try to get position from message.data
-    start_from = message.data.get("carousel_start_from", start_from)
-
-    selected_val = message.data.pop("carousel_selected_val", "")
-
-    # if user click on left arrow
-    if selected_val == LEFT_PRESSED:
-        start_from -= displayed_content_count
-
-    # if user click on right arrow
-    elif selected_val == RIGHT_PRESSED:
-        start_from += displayed_content_count
-
-    # if user select value
-    elif selected_val:
-        await send_or_update_message(
-            message,
-            bot,
-            selected_value_label.format(label=label, selected_val=selected_val),
-        )
+        await send_or_update_message(message, bot, msg_text)
         _clear_carousel_data(message)
 
         return selected_val
 
-    # Set current position in message.data
-    message.data["carousel_start_from"] = start_from
+    async def display(self) -> Optional[str]:
+        """Show carousel or return selected value."""
 
-    # Set selected_value_label and carousel_message_label for get_carousel_result
-    message.data["carousel_selected_value_label"] = selected_value_label
-    message.data["carousel_message_label"] = label
+        if self.is_value_selected:
+            return await self.get_value(self.message, self.bot)
 
-    # Count new start position
-    content_len = len(widget_content)
-    if start_from < 0 or start_from > content_len:
-        start_from = abs(content_len - abs(start_from))
+        if self.inline:
+            self.add_inline_markup()
+        else:
+            self.add_newline_markup()
 
-    # Count end position
-    end = start_from + displayed_content_count
-
-    if len(widget_content) <= displayed_content_count:
-        # if all content displayed, then hide arrows
-        show_right_arrow = False
-        show_left_arrow = False
-    elif loop:
-        # Loop content and always show arrows
-        widget_content = cycle(widget_content)  # type: ignore
-        show_right_arrow = True
-        show_left_arrow = True
-    else:
-        show_right_arrow = end < content_len
-        show_left_arrow = start_from > 0
-
-    displayed_content = islice(widget_content, start_from, end)
-
-    if inline:
-        markup = _get_inline_markup(
-            message,
-            command,
-            displayed_content,
-            show_left_arrow,
-            show_right_arrow,
-            control_labels,
-            additional_markup,
-        )
-    else:
-        markup = _get_newline_markup(
-            message,
-            command,
-            displayed_content,
-            show_left_arrow,
-            show_right_arrow,
-            show_numbers,
-            PaginationInfo(start_from, end, displayed_content_count, content_len),
-            control_labels,
-            additional_markup,
-        )
-
-    await send_or_update_message(message, bot, label, markup=markup)
-
-    return None
-
-
-async def get_carousel_result(message: Message, bot: Bot) -> Optional[str]:
-    selected_val = message.data.get("carousel_selected_val", "")
-    selected_value_label = message.data.get("carousel_selected_value_label")
-    message_label = message.data.get("carousel_message_label")
-
-    # if user select value
-    if selected_val and selected_val not in {LEFT_PRESSED, RIGHT_PRESSED}:
         await send_or_update_message(
-            message,
-            bot,
-            selected_value_label.format(label=message_label, selected_val=selected_val),
+            self.message,
+            self.bot,
+            self.label,
+            markup=self.markup
         )
-        _clear_carousel_data(message)
-
-        return selected_val
-
-    return None
 
 
 def _clear_carousel_data(message: Message) -> None:
     """Clear widget data form message.data."""
 
     message.data.pop("message_id", None)
-    message.data.pop("carousel_selected_val", None)
-    message.data.pop("carousel_selected_value_label", None)
-    message.data.pop("carousel_message_label", None)
-    message.data.pop("carousel_start_from", None)
-
-
-def _is_valid_label_for_placing_numbers(label: str) -> bool:
-    number_places = list(string.Formatter().parse(label))
-
-    if len([place for place in number_places if place[1] == ""]) != 2:
-        return False
-
-    return True
-
-
-def _get_inline_markup(
-    message: Message,
-    command: str,
-    displayed_content: Iterator,
-    show_left_arrow: bool,
-    show_right_arrow: bool,
-    control_labels: Tuple[str, str],
-    additional_markup: MessageMarkup = None,
-) -> MessageMarkup:
-    """Build inline markup for Carousel widget."""
-
-    markup = MessageMarkup()
-
-    if show_left_arrow:
-        markup.add_bubble(
-            command=message.command.command,
-            label=control_labels[0],
-            data={**message.data, "carousel_selected_val": LEFT_PRESSED},
-            new_row=False,
-        )
-
-    for content_item in displayed_content:
-        markup.add_bubble(
-            command=command,
-            label=content_item,
-            data={**message.data, "carousel_selected_val": content_item},
-            new_row=False,
-        )
-
-    if show_right_arrow:
-        markup.add_bubble(
-            command=message.command.command,
-            label=control_labels[1],
-            data={**message.data, "carousel_selected_val": RIGHT_PRESSED},
-            new_row=False,
-        )
-
-    if additional_markup:
-        markup = merge_markup(markup, additional_markup)
-
-    return markup
-
-
-def _get_newline_markup(
-    message: Message,
-    command: str,
-    displayed_content: Iterator,
-    show_left_arrow: bool,
-    show_right_arrow: bool,
-    show_numbers: bool,
-    pagination: PaginationInfo,
-    control_labels: Tuple[str, str],
-    additional_markup: MessageMarkup = None,
-) -> MessageMarkup:
-    """Build newline markup for Carousel widget."""
-
-    markup = MessageMarkup()
-    right_label = control_labels[1]
-
-    if show_numbers:
-        right_bound = pagination.end + pagination.page_len
-        if pagination.content_len < right_bound:
-            right_bound = pagination.content_len
-
-        right_label = right_label.format(pagination.end + 1, right_bound)
-
-    right_arrow_bubble = {
-        "command": message.command.command,
-        "label": right_label,
-        "data": {**message.data, "carousel_selected_val": RIGHT_PRESSED},
-    }
-
-    for content_item in displayed_content:
-        if isinstance(content_item, (list, tuple, set)):
-            markup.bubbles.append(
-                [
-                    BubbleElement(
-                        command=command,
-                        label=row_item,
-                        data={**message.data, "carousel_selected_val": row_item},
-                    )
-                    for row_item in content_item
-                ]
-            )
-            continue
-
-        markup.bubbles.append(
-            [
-                BubbleElement(
-                    command=command,
-                    label=content_item,
-                    data={**message.data, "carousel_selected_val": content_item},
-                )
-            ]
-        )
-
-    if show_left_arrow:
-        left_label = control_labels[0]
-
-        if show_numbers:
-            left_bound = pagination.start - pagination.page_len + 1
-            left_label = left_label.format(left_bound, pagination.start)
-
-        markup.add_bubble(
-            command=message.command.command,
-            label=left_label,
-            data={**message.data, "carousel_selected_val": LEFT_PRESSED},
-        )
-        # if left arrow displayed, then show right arrow inline
-        right_arrow_bubble["new_row"] = False
-
-    if show_right_arrow:
-        markup.add_bubble(**right_arrow_bubble)
-
-    if additional_markup:
-        markup = merge_markup(markup, additional_markup)
-
-    return markup
+    message.data.pop(SELECTED_VALUE_KEY, None)
+    message.data.pop(SELECTED_VALUE_LABEL_KEY, None)
+    message.data.pop(MESSAGE_LABEL_KEY, None)
+    message.data.pop(START_FROM_KEY, None)
