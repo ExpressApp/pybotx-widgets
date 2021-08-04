@@ -185,8 +185,8 @@ class MarkupMixin:
 class CalendarWidget(Widget, MarkupMixin):
     LEFT_ARROW = strings.LEFT_ARROW
     RIGHT_ARROW = strings.RIGHT_ARROW
+    AFTER_SELECT_TEXT = strings.CAL_DATE_SELECTED
     SELECT_DATE = strings.SELECT_DATE
-    DATE_SELECTED_TEXT = strings.CAL_DATE_SELECTED
     WEEKDAYS = strings.WEEKDAYS
     MONTHS = strings.MONTHS
 
@@ -224,7 +224,7 @@ class CalendarWidget(Widget, MarkupMixin):
 
         _clear_calendar_data(message)
         # Remove buttons
-        await send_or_update_message(message, bot, cls.DATE_SELECTED_TEXT)
+        await send_or_update_message(message, bot, cls.AFTER_SELECT_TEXT)
 
         return selected_date
 
