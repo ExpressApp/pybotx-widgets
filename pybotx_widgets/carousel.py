@@ -1,8 +1,7 @@
 """Carousel widget."""
 
-import string
 from itertools import cycle, islice
-from typing import Iterator, Optional, Sequence, Tuple
+from typing import Iterator, Optional, Sequence, Tuple, Any
 
 from botx import Bot, BubbleElement, Message, MessageMarkup
 
@@ -23,21 +22,14 @@ MESSAGE_LABEL_KEY = "carousel_message_label"
 class ValidationMixin:
     LEFT_ARROW: str
     RIGHT_ARROW: str
+    SELECTED_VALUE_LABEL: str
 
     widget_content: Sequence
-    SELECTED_VALUE_LABEL: str
     _start_from: int
     loop: bool
     inline: bool
     show_numbers: bool
-
-    def _is_valid_label_for_placing_numbers(self, label: str) -> bool:
-        number_places = list(string.Formatter().parse(label))
-
-        if len([place for place in number_places if place[1] == ""]) != 2:
-            return False
-
-        return True
+    _control_labels: Tuple[str, str]
 
     def _validate_params(self) -> None:
         if "{selected_val}" not in self.SELECTED_VALUE_LABEL:
@@ -52,18 +44,11 @@ class ValidationMixin:
         if self.inline and self.show_numbers:
             raise ValueError("Sorry, you can't enable both 'inline' and 'show_numbers'")
 
-        if not self.control_labels:
-            self.control_labels = (
-                (f"{self.LEFT_ARROW} ({{}}-{{}})", f"{self.RIGHT_ARROW} ({{}}-{{}})")
-                if self.show_numbers
-                else (self.LEFT_ARROW, self.RIGHT_ARROW)
-            )
-
         if self.show_numbers:
-            if not self._is_valid_label_for_placing_numbers(self.control_labels[0]):
+            if self._control_labels[0].count("{}") != 2:
                 raise ValueError("Left control label should have exactly two '{}'")
 
-            if not self._is_valid_label_for_placing_numbers(self.control_labels[1]):
+            if self._control_labels[1].count("{}") != 2:
                 raise ValueError("Right control label should have exactly two '{}'")
 
 
@@ -75,7 +60,6 @@ class MarkupMixin:
     start_from: int
     _start_from: int
     end: int
-    control_labels: Tuple[str, str]
     loop: bool
     show_numbers: bool
 
@@ -83,6 +67,10 @@ class MarkupMixin:
     command: str
     additional_markup: MessageMarkup
     markup: MessageMarkup
+
+    content_len: int
+    left_btn_label: str
+    right_btn_label: str
 
     def get_left_and_right_button_visibility(self) -> Tuple[bool, bool]:
         if len(self.widget_content) <= self.displayed_content_count:
@@ -92,8 +80,7 @@ class MarkupMixin:
             # always show arrows
             return True, True
         else:
-            content_len = len(self.widget_content)
-            return (self.start_from > 0), (self.end < content_len)
+            return (self.start_from > 0), (self.end < self.content_len)
 
     def add_inline_markup(self) -> None:
         """Build inline markup for Carousel widget."""
@@ -102,7 +89,7 @@ class MarkupMixin:
         if show_left_arrow:
             self.markup.add_bubble(
                 command=self.message.command.command,
-                label=self.control_labels[0],
+                label=self.left_btn_label,
                 data={**self.message.data, SELECTED_VALUE_KEY: LEFT_PRESSED},
                 new_row=False,
             )
@@ -118,7 +105,7 @@ class MarkupMixin:
         if show_right_arrow:
             self.markup.add_bubble(
                 command=self.message.command.command,
-                label=self.control_labels[1],
+                label=self.right_btn_label,
                 data={**self.message.data, SELECTED_VALUE_KEY: RIGHT_PRESSED},
                 new_row=False,
             )
@@ -130,19 +117,9 @@ class MarkupMixin:
         """Build newline markup for Carousel widget."""
 
         show_left_arrow, show_right_arrow = self.get_left_and_right_button_visibility()
-        content_len = len(self.widget_content)
-        right_label = self.control_labels[1]
-
-        if self.show_numbers:
-            right_bound = self.end + self.displayed_content_count
-            if content_len < right_bound:
-                right_bound = content_len
-
-            right_label = right_label.format(self.end + 1, right_bound)
-
         right_arrow_bubble = {
             "command": self.message.command.command,
-            "label": right_label,
+            "label": self.right_btn_label,
             "data": {**self.message.data, SELECTED_VALUE_KEY: RIGHT_PRESSED},
         }
 
@@ -171,15 +148,9 @@ class MarkupMixin:
             )
 
         if show_left_arrow:
-            left_label = self.control_labels[0]
-
-            if self.show_numbers:
-                left_bound = self.start_from - self.displayed_content_count + 1
-                left_label = left_label.format(left_bound, self.start_from)
-
             self.markup.add_bubble(
                 command=self.message.command.command,
-                label=left_label,
+                label=self.left_btn_label,
                 data={**self.message.data, SELECTED_VALUE_KEY: LEFT_PRESSED},
             )
             # if left arrow displayed, then show right arrow inline
@@ -195,6 +166,9 @@ class MarkupMixin:
 class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
     LEFT_ARROW = strings.LEFT_ARROW
     RIGHT_ARROW = strings.RIGHT_ARROW
+    LEFT_LABEL_WITH_NUMBERS = f"{LEFT_ARROW} ({{}}-{{}})"
+    RIGHT_LABEL_WITH_NUMBERS = f"{RIGHT_ARROW} ({{}}-{{}})"
+
     # Display format of the selected value, default = "{label} {selected_val}"
     SELECTED_VALUE_LABEL = strings.SELECTED_VALUE_LABEL
 
@@ -208,8 +182,8 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         inline: bool = True,
         loop: bool = True,
         show_numbers: bool = False,
-        *args,
-        **kwargs
+        *args: Any,
+        **kwargs: Any
     ) -> None:
         """
         :param widget_content - All content to be displayed
@@ -228,15 +202,25 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         self.label = label
         self._start_from = start_from
         self.displayed_content_count = displayed_content_count
-        self.control_labels = control_labels
         self.inline = inline
         self.loop = loop
         self.show_numbers = show_numbers
+
+        if not control_labels:
+            if self.show_numbers:
+                self._control_labels = (
+                    self.LEFT_LABEL_WITH_NUMBERS,
+                    self.RIGHT_LABEL_WITH_NUMBERS
+                )
+            else:
+                self._control_labels = (self.LEFT_ARROW, self.RIGHT_ARROW)
+
         self._validate_params()
 
-        self.selected_val = self.message.data.pop(SELECTED_VALUE_KEY, "")
+        self.selected_val = self.message.data.get(SELECTED_VALUE_KEY, "")
         self._start_from = self.message.data.get(START_FROM_KEY, start_from)
         self.markup = MessageMarkup()
+        self.content_len = len(self.widget_content)
 
         if self.selected_val == LEFT_PRESSED:
             self._start_from -= displayed_content_count
@@ -251,12 +235,36 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         self.message.data[MESSAGE_LABEL_KEY] = self.label
 
     @property
+    def left_btn_label(self) -> str:
+        """Left button label."""
+        left_label = self._control_labels[0]
+
+        if self.show_numbers:
+            left_bound = self.start_from - self.displayed_content_count + 1
+            left_label = left_label.format(left_bound, self.start_from)
+
+        return left_label
+
+    @property
+    def right_btn_label(self) -> str:
+        """Right button label."""
+        right_label = self._control_labels[1]
+
+        if self.show_numbers:
+            right_bound = self.end + self.displayed_content_count
+            if self.content_len < right_bound:
+                right_bound = self.content_len
+
+            right_label = right_label.format(self.end + 1, right_bound)
+
+        return right_label
+
+    @property
     def start_from(self) -> int:
         """Count start position."""
 
-        content_len = len(self.widget_content)
-        if self._start_from < 0 or self._start_from > content_len:
-            return abs(content_len - abs(self._start_from))
+        if self._start_from < 0 or self._start_from > self.content_len:
+            return abs(self.content_len - abs(self._start_from))
 
         return self._start_from
 
@@ -280,6 +288,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
 
     @classmethod
     async def get_value(cls, message: Message, bot: Bot) -> Optional[str]:
+        print('message.data', message.data)
         selected_val = message.data[SELECTED_VALUE_KEY]
         label = message.data[MESSAGE_LABEL_KEY]
 
@@ -315,7 +324,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
 
 
 def _clear_carousel_data(message: Message) -> None:
-    """Clear widget data form message.data."""
+    """Clear widget data from message.data."""
 
     message.data.pop("message_id", None)
     message.data.pop(SELECTED_VALUE_KEY, None)
