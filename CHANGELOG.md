@@ -1,3 +1,10 @@
+## 0.5.0 (Aug 3, 2021)
+
+### Changed
+* **Breaking change:** change `Carousel` widget implementation to class
+
+---
+
 ## 0.4.3 (Aug 2, 2021)
 
 ### Fix
