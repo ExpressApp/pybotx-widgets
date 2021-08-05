@@ -288,7 +288,6 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
 
     @classmethod
     async def get_value(cls, message: Message, bot: Bot) -> Optional[str]:
-        print('message.data', message.data)
         selected_val = message.data[SELECTED_VALUE_KEY]
         label = message.data[MESSAGE_LABEL_KEY]
 
