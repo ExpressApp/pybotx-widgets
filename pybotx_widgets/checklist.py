@@ -1,5 +1,5 @@
 """Checklist widget."""
-from typing import Any, Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union, List
 
 from botx import BubbleElement, Message, MessageMarkup
 
@@ -53,7 +53,7 @@ class MarkupMixin:
         self.add_item(buttons_row)
 
     def add_markup(self) -> None:
-        """Generate and return markup for Checklist widget."""
+        """Generate markup for Checklist widget."""
 
         for content_item in self.widget_content:
             if isinstance(content_item, (list, tuple, set)):
@@ -98,11 +98,11 @@ class CheckListWidget(Widget, MarkupMixin):
 
     @classmethod
     def get_value(cls, message: Message) -> str:
-        return message.data.get(SELECTED_ITEM_KEY, None)
+        return message.data[SELECTED_ITEM_KEY]
 
     @classmethod
-    def get_checked_items(cls, message: Message) -> Optional[str]:
-        return message.data.get(CHECKED_ITEMS_KEY, None)
+    def get_checked_items(cls, message: Message) -> List[str]:
+        return message.data.get(CHECKED_ITEMS_KEY, [])
 
     async def display(self) -> Optional[str]:
         """Show checklist and return selected item."""
@@ -121,4 +121,5 @@ class CheckListWidget(Widget, MarkupMixin):
             self.markup = merge_markup(self.markup, self.additional_markup)
 
         await send_or_update_message(self.message, self.bot, self.label, self.markup)
-        return self.get_value(self.message)
+
+        return self.get_value(self.message) if self.selected_item else None
