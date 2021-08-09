@@ -1,7 +1,9 @@
 """Checklist widget."""
-from typing import Any, List, Sequence
+from typing import Any, Optional, Sequence, Union
 
-from botx import Bot, BubbleElement, Message, MessageMarkup
+from botx import BubbleElement, Message, MessageMarkup
+
+from pybotx_widgets.base import Widget
 from pybotx_widgets.resources import strings
 from pybotx_widgets.service import merge_markup, send_or_update_message
 
@@ -9,100 +11,114 @@ SELECTED_ITEM_KEY = "checklist_selected_item"
 CHECKED_ITEMS_KEY = "checklist_checked_items"
 
 
-async def checklist(
-    message: Message,
-    bot: Bot,
-    widget_content: Sequence,
-    label: str,
-    command: str,
-    additional_markup: MessageMarkup = None,
-) -> str:
-    """Show checklist and return selected item.
+class MarkupMixin:
+    CHECKBOX_CHECKED: str
+    CHECKBOX_UNCHECKED: str
 
-    :param message - botx Message
-    :param bot - botx Message
-    :param widget_content - All content to be displayed
-    :param label - Text of message
-    :param command - Command for bubbles command attribute
-    :param additional_markup - Additional markup for attaching to widget
-
-    """
-    # Get selected item
-    selected_item = message.data.get(SELECTED_ITEM_KEY)
-
-    if selected_item:
-        # Append selected item in checked_items list
-        checked_items = message.data.get(CHECKED_ITEMS_KEY, [])
-
-        if selected_item in checked_items:
-            checked_items.remove(selected_item)
-        else:
-            checked_items.append(selected_item)
-
-        message.data[CHECKED_ITEMS_KEY] = checked_items
-
-    markup = _get_markup(message, widget_content, command)
-
-    message.data.pop(SELECTED_ITEM_KEY, None)
-
-    if additional_markup:
-        markup = merge_markup(markup, additional_markup)
-
-    await send_or_update_message(message, bot, label, markup)
-
-    return selected_item
-
-
-def get_checked_items(message: Message) -> List[str]:
-    """Get checked items list from message.data."""
-
-    return message.data.get("checklist_checked_items", [])
-
-
-def _get_markup(
-    message: Message, widget_content: Sequence, command: str
-) -> MessageMarkup:
-    """Generate and return markup for Checklist widget."""
+    command: str
+    message: Message
+    widget_content: Sequence
 
     markup = MessageMarkup()
-    checked_items = message.data.get(CHECKED_ITEMS_KEY, [])
+    checked_items: list
 
-    for content_item in widget_content:
-        if not isinstance(content_item, (list, tuple, set)):
-            checkbox = _get_checkbox_emoji(content_item, checked_items)
+    def get_checkbox_emoji(self, content_item: Any) -> str:
+        """Get selected or unselected checkbox emoji."""
 
-            markup.bubbles.append(
+        # If item is selected
+        if content_item in self.checked_items:
+            return self.CHECKBOX_CHECKED
+
+        return self.CHECKBOX_UNCHECKED
+
+    def add_item(self, value: Union[list, str]) -> None:
+        """Add checkbox item."""
+
+        self.markup.bubbles.append(value)
+
+    def add_row(self, row: Sequence) -> None:
+        """Add buttons row into markup."""
+
+        buttons_row = []
+        for row_item in row:
+            checkbox = self.get_checkbox_emoji(row_item)
+
+            buttons_row.append(
+                BubbleElement(
+                    command=self.command,
+                    label=f"{checkbox} {row_item}",
+                    data={**self.message.data, SELECTED_ITEM_KEY: row_item},
+                )
+            )
+        self.add_item(buttons_row)
+
+    def add_markup(self) -> None:
+        """Generate and return markup for Checklist widget."""
+
+        for content_item in self.widget_content:
+            if isinstance(content_item, (list, tuple, set)):
+                # if markup is in table format, then add row with buttons
+                self.add_row(content_item)
+                continue
+
+            checkbox = self.get_checkbox_emoji(content_item)
+            self.add_item(
                 [
                     BubbleElement(
-                        command=command,
+                        command=self.command,
                         label=f"{checkbox} {content_item}",
-                        data={**message.data, SELECTED_ITEM_KEY: content_item},
+                        data={**self.message.data, SELECTED_ITEM_KEY: content_item},
                     )
                 ]
             )
-            continue
-
-        row = []
-        for row_item in content_item:
-            checkbox = _get_checkbox_emoji(row_item, checked_items)
-
-            row.append(
-                BubbleElement(
-                    command=command,
-                    label=f"{checkbox} {row_item}",
-                    data={**message.data, SELECTED_ITEM_KEY: row_item},
-                )
-            )
-        markup.bubbles.append(row)
-
-    return markup
 
 
-def _get_checkbox_emoji(content_item: Any, checked_items: List[str]) -> str:
-    """Get selected or unselected checkbox emoji."""
+class CheckListWidget(Widget, MarkupMixin):
+    CHECKBOX_CHECKED = strings.CHECKBOX_CHECKED
+    CHECKBOX_UNCHECKED = strings.CHECKBOX_UNCHECKED
 
-    # If item is selected
-    if content_item in checked_items:
-        return strings.CHECKBOX_CHECKED
+    def __init__(
+        self,
+        widget_content: Sequence,
+        label: str,
+        *args: Any,
+        **kwargs: Any
+    ):
+        """
+        :param widget_content - All content to be displayed
+        :param label - Text of message
+        """
+        super().__init__(*args, **kwargs)
+        self.widget_content = widget_content
+        self.label = label
 
-    return strings.CHECKBOX_UNCHECKED
+        self.markup = MessageMarkup()
+        self.selected_item = self.message.data.get(SELECTED_ITEM_KEY)
+        self.checked_items = self.message.data.get(CHECKED_ITEMS_KEY, [])
+
+    @classmethod
+    def get_value(cls, message: Message) -> str:
+        return message.data.get(SELECTED_ITEM_KEY, None)
+
+    @classmethod
+    def get_checked_items(cls, message: Message) -> Optional[str]:
+        return message.data.get(CHECKED_ITEMS_KEY, None)
+
+    async def display(self) -> Optional[str]:
+        """Show checklist and return selected item."""
+
+        if self.selected_item:
+            if self.selected_item in self.checked_items:
+                self.checked_items.remove(self.selected_item)
+            else:
+                self.checked_items.append(self.selected_item)
+
+            self.message.data[CHECKED_ITEMS_KEY] = self.checked_items
+
+        self.add_markup()
+
+        if self.additional_markup:
+            self.markup = merge_markup(self.markup, self.additional_markup)
+
+        await send_or_update_message(self.message, self.bot, self.label, self.markup)
+        return self.get_value(self.message)

@@ -26,5 +26,5 @@ class Widget:
         raise NotImplementedError
 
     @classmethod
-    async def get_value(cls, message: Message, bot: Bot) -> Any:
+    async def get_value(cls, *args, **kwargs) -> Any:
         raise NotImplementedError
