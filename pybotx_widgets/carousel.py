@@ -1,14 +1,13 @@
 """Carousel widget."""
 
 from itertools import cycle, islice
-from typing import Iterator, Optional, Sequence, Tuple, Any
+from typing import Any, Iterator, Optional, Sequence, Tuple
 
 from botx import Bot, BubbleElement, Message, MessageMarkup
 
 from pybotx_widgets.base import Widget
 from pybotx_widgets.resources import strings
 from pybotx_widgets.service import merge_markup, send_or_update_message
-
 
 LEFT_PRESSED = "CAROUSEL_LEFT_BUTTON_PRESSED"
 RIGHT_PRESSED = "CAROUSEL_RIGHT_BUTTON_PRESSED"
@@ -183,7 +182,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         loop: bool = True,
         show_numbers: bool = False,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> None:
         """
         :param widget_content - All content to be displayed
@@ -210,7 +209,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
             if self.show_numbers:
                 self._control_labels = (
                     self.LEFT_LABEL_WITH_NUMBERS,
-                    self.RIGHT_LABEL_WITH_NUMBERS
+                    self.RIGHT_LABEL_WITH_NUMBERS,
                 )
             else:
                 self._control_labels = (self.LEFT_ARROW, self.RIGHT_ARROW)
@@ -276,7 +275,10 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
 
     @property
     def is_value_selected(self) -> bool:
-        return self.selected_val and self.selected_val not in (LEFT_PRESSED, RIGHT_PRESSED)
+        return self.selected_val and self.selected_val not in (
+            LEFT_PRESSED,
+            RIGHT_PRESSED,
+        )
 
     @property
     def displayed_content(self) -> Iterator:
@@ -295,8 +297,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
             return
 
         msg_text = cls.SELECTED_VALUE_LABEL.format(
-            label=label,
-            selected_val=selected_val
+            label=label, selected_val=selected_val
         )
         await send_or_update_message(message, bot, msg_text)
         _clear_carousel_data(message)
@@ -315,10 +316,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
             self.add_newline_markup()
 
         await send_or_update_message(
-            self.message,
-            self.bot,
-            self.label,
-            markup=self.markup
+            self.message, self.bot, self.label, markup=self.markup
         )
 
 
