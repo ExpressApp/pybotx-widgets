@@ -1,114 +1,137 @@
 """Pagination widget."""
-from dataclasses import dataclass, field
+import asyncio
 from itertools import zip_longest
-from typing import Iterator, List, Tuple
+from typing import Iterator, List, Optional, Tuple, Any
 from uuid import UUID, uuid4
 
-from botx import Bot, File, Message, MessageMarkup
+from botx import SendingMessage
+
+from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
-from pybotx_widgets.service import merge_markup, send_or_update_message
+from pybotx_widgets.resources.strings import FormatTemplate
+
+START_FROM_KEY = "pagination_start_from"
+MESSAGE_IDS_KEY = "pagination_message_ids"
 
 
-@dataclass
-class MessageContent:
-    text: str = ""
-    markup: MessageMarkup = field(default_factory=MessageMarkup)
-    file: File = None  # noqa: WPS110
+PaginatedContent = Iterator[Tuple[UUID, Optional[SendingMessage]]]
 
 
-PaginatedContent = Iterator[Tuple[UUID, MessageContent]]
+class MarkupMixin(WidgetMarkup):
+    BACKWARD_BTN_TEMPLATE: FormatTemplate = strings.PAGINATION_BACKWARD_BTN_TEMPLATE
+    FORWARD_BTN_TEMPLATE: FormatTemplate = strings.PAGINATION_FORWARD_BTN_TEMPLATE
 
+    paginate_by: int
+    start_from: int
+    content_len: int
+    message_ids: List[UUID]
 
-async def pagination(
-    message: Message,
-    bot: Bot,
-    widget_content: List[MessageContent],
-    paginate_by: int,
-    command: str,
-) -> None:
-    """Paginate content."""
+    command: str
 
-    if len(widget_content) <= paginate_by:
-        for widget_message in widget_content:
-            await bot.answer_message(
-                widget_message.text,
-                message,
-                markup=widget_message.markup,
-                file=widget_message.file,
-            )
-        return
+    def add_backward_btn(self) -> None:
+        """Add Backward buttons to scroll widget to the left."""
 
-    start_from = message.data.get("pagination_start_from", 0)
-    message_ids = message.data.get("pagination_message_ids")
-    if not message_ids:
-        message_ids = [uuid4() for _ in range(paginate_by)]
+        if self.start_from < self.paginate_by:
+            return
 
-    control_markup = get_control_markup(
-        command, start_from, len(widget_content), paginate_by, message_ids
-    )
-    display_content = widget_content[start_from : start_from + paginate_by]
-    display_content: PaginatedContent = zip_longest(message_ids, display_content)
-
-    for message_id, widget_message in display_content:
-        if "message_id" in message.data:
-            message.command.data["message_id"] = message_id
-
-        widget_message = widget_message or MessageContent(text=strings.EMPTY_MSG_SYMBOL)
-
-        if message_id == message_ids[-1]:
-            widget_message.markup = merge_markup(widget_message.markup, control_markup)
-
-        await send_or_update_message(
-            message,
-            bot,
-            widget_message.text,
-            widget_message.markup,
-            widget_message.file,
-            message_id,
+        left_border = self.start_from - self.paginate_by
+        label = self.BACKWARD_BTN_TEMPLATE.format(
+            left_num=left_border + 1, right_num=self.start_from
         )
 
-
-def get_control_markup(
-    command: str,
-    start_from: int,
-    messages_content_len: int,
-    paginate_by: int,
-    message_ids: List[UUID],
-) -> MessageMarkup:
-    """Get markup with Backward/Forward buttons to control widget."""
-
-    control_markup = MessageMarkup()
-    if start_from >= paginate_by:
-        left_border = start_from - paginate_by
-        label = strings.PAGINATION_BACKWARD_BTN_TEMPLATE.format(
-            left_num=left_border + 1, right_num=start_from
-        )
-
-        control_markup.add_bubble(
+        self.markup.add_bubble(
             label=label,
-            command=command,
+            command=self.command,
             data={
-                "pagination_start_from": left_border,
-                "pagination_message_ids": message_ids,
+                START_FROM_KEY: left_border,
+                MESSAGE_IDS_KEY: self.message_ids,
             },
         )
 
-    if (start_from + paginate_by) < messages_content_len:
-        left_border = start_from + paginate_by
-        right_border = min(left_border + paginate_by, messages_content_len)
+    def add_forward_btn(self) -> None:
+        """Add Forward buttons to scroll widget to the right."""
 
-        label = strings.PAGINATION_FORWARD_BTN_TEMPLATE.format(
+        left_border = self.start_from + self.paginate_by
+
+        if left_border >= self.content_len:
+            return
+
+        right_border = min(left_border + self.paginate_by, self.content_len)
+
+        label = self.FORWARD_BTN_TEMPLATE.format(
             left_num=left_border + 1, right_num=right_border
         )
 
-        control_markup.add_bubble(
+        self.markup.add_bubble(
             label=label,
-            command=command,
+            command=self.command,
             new_row=False,
             data={
-                "pagination_start_from": left_border,
-                "pagination_message_ids": message_ids,
+                START_FROM_KEY: left_border,
+                MESSAGE_IDS_KEY: self.message_ids,
             },
         )
 
-    return control_markup
+    def add_control_markup(self) -> None:
+        """Get markup with Backward/Forward buttons to control widget."""
+
+        self.add_backward_btn()
+        self.add_forward_btn()
+
+
+class PaginationWidget(Widget, MarkupMixin):
+    def __init__(
+        self,
+        widget_content: List[SendingMessage],
+        paginate_by: int,
+        delay_between_messages: float = 0.5,
+        *args: Any,
+        **kwargs: Any
+    ):
+        super().__init__(*args, **kwargs)
+
+        self.widget_content = widget_content
+        self.paginate_by = paginate_by
+        self.delay_between_messages = delay_between_messages
+
+        self.content_len = len(widget_content)
+        self.empty_msg = SendingMessage.from_message(
+            text=strings.EMPTY_MSG_SYMBOL, message=self.message
+        )
+        self.start_from = self.message.data.get(START_FROM_KEY, 0)
+        self.message_ids = self.message.data.get(MESSAGE_IDS_KEY)
+
+        min_len = min(paginate_by, self.content_len)
+        self.message_ids = self.message_ids or [uuid4() for _ in range(min_len)]
+
+    @property
+    def display_content(self) -> PaginatedContent:
+        if self.content_len < self.paginate_by:
+            return zip_longest(self.message_ids, self.widget_content)
+
+        display_content = self.widget_content[
+            self.start_from : self.start_from + self.paginate_by
+        ]
+        return zip_longest(self.message_ids, display_content)
+
+    async def send_widget_content(self) -> None:
+        for message_id, widget_message in self.display_content:
+            if "message_id" in self.message.data:
+                self.message.command.data["message_id"] = message_id
+
+            widget_message = widget_message or self.empty_msg
+
+            if message_id == self.message_ids[-1]:
+                self.add_additional_markup()
+                widget_message.markup = self.merge_markup(
+                    widget_message.markup, self.markup
+                )
+
+            await self.send_or_update_message(widget_message, message_id)
+            await asyncio.sleep(self.delay_between_messages)
+
+    async def display(self) -> None:
+        if self.content_len > self.paginate_by:
+            self.add_control_markup()
+
+        await self.send_widget_content()
