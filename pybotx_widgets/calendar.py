@@ -4,21 +4,21 @@ import re
 from calendar import Calendar
 from collections import Callable
 from datetime import date
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Any
 
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 
-from botx import BubbleElement, Message, MessageMarkup, Bot
-from pybotx_widgets.base import Widget
+from botx import BubbleElement, Message, Bot
+from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
-from pybotx_widgets.service import merge_markup, send_or_update_message
+from pybotx_widgets.service import send_or_update_message
 
 MONTH_TO_DISPLAY_KEY = "calendar_month_to_display"
 SELECTED_DATE_KEY = "calendar_selected_date"
 
 
-class MarkupMixin:
+class MarkupMixin(WidgetMarkup):
     message: Message
     command: str
 
@@ -26,7 +26,6 @@ class MarkupMixin:
     end_date: date
     current_date: date
     include_past: bool
-    markup: MessageMarkup
 
     LEFT_ARROW: str
     RIGHT_ARROW: str
@@ -43,18 +42,18 @@ class MarkupMixin:
         prev_year, next_year = self.get_prev_and_next_year()
 
         if not self.include_past and self.start_date.year == self.current_date.year:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=self.command,
                 label=" ",
             )
         else:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=f"{self.command} {self.LEFT_ARROW}",
                 label=self.LEFT_ARROW,
                 data={**self.message.data, MONTH_TO_DISPLAY_KEY: prev_year},
             )
 
-        self.markup.add_bubble(
+        self.widget_msg.markup.add_bubble(
             command="",
             label=str(self.current_date.year),
             data=self.message.data,
@@ -62,12 +61,12 @@ class MarkupMixin:
         )
 
         if self.current_date.year == self.end_date.year:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=self.command,
                 label=" ",
             )
         else:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=f"{self.command} {self.RIGHT_ARROW}",
                 label=self.RIGHT_ARROW,
                 data={**self.message.data, MONTH_TO_DISPLAY_KEY: next_year},
@@ -92,17 +91,17 @@ class MarkupMixin:
         )
 
         if not self.include_past and is_lower_limit:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=self.command,
                 label=" ",
             )
         else:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=f"{self.command} {self.LEFT_ARROW}",
                 label=self.LEFT_ARROW,
                 data={**self.message.data, MONTH_TO_DISPLAY_KEY: prev_month},
             )
-        self.markup.add_bubble(
+        self.widget_msg.markup.add_bubble(
             command="",
             label=self.MONTHS[self.current_date.month],
             data=self.message.data,
@@ -110,12 +109,12 @@ class MarkupMixin:
         )
 
         if is_upper_limit:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=self.command,
                 label=" ",
             )
         else:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=f"{self.command} {self.RIGHT_ARROW}",
                 label=self.RIGHT_ARROW,
                 data={**self.message.data, MONTH_TO_DISPLAY_KEY: next_month},
@@ -125,7 +124,7 @@ class MarkupMixin:
     def add_week_bubbles(self) -> None:
         """Add week bubbles ([Пн][Вт][Ср][Чт][Пт][Сб][Вс])."""
 
-        self.markup.bubbles.append(
+        self.widget_msg.markup.bubbles.append(
             [BubbleElement(label=weekday, command="") for weekday in self.WEEKDAYS]
         )
 
@@ -179,7 +178,7 @@ class MarkupMixin:
                 )
 
             if append_row:
-                self.markup.bubbles.append(calendar_dates_row)
+                self.widget_msg.markup.bubbles.append(calendar_dates_row)
 
 
 class CalendarWidget(Widget, MarkupMixin):
@@ -209,10 +208,19 @@ class CalendarWidget(Widget, MarkupMixin):
         self.end_date = end_date
         self.include_past = include_past
 
-        self.current_date = date.today()
-        self.markup = MessageMarkup()
         self.month_to_display = self.message.data.get(MONTH_TO_DISPLAY_KEY)
         self.selected_date = self.message.data.get(SELECTED_DATE_KEY)
+        self.widget_msg.text = self.SELECT_DATE
+
+    @property
+    def current_date(self) -> date:
+        arg = self.message.command.single_argument
+        arrows_regexp = "|".join([self.LEFT_ARROW, self.RIGHT_ARROW])
+
+        if re.findall(arrows_regexp, arg) and self.month_to_display:
+            return parser.parse(self.month_to_display).date()
+        else:
+            return date.today()
 
     @classmethod
     async def get_value(cls, message: Message, bot: Bot) -> date:
@@ -241,29 +249,13 @@ class CalendarWidget(Widget, MarkupMixin):
         next_month = self.current_date + relativedelta(months=1)
         return prev_month, next_month
 
-    async def display(self) -> Optional[date]:
-        """Show calendar for date selection."""
-
-        arg = self.message.command.single_argument
-        arrows_regexp = "|".join([self.LEFT_ARROW, self.RIGHT_ARROW])
-
-        if re.findall(arrows_regexp, arg) and self.month_to_display:
-            self.current_date = parser.parse(self.month_to_display).date()
-
-        elif self.selected_date:
-            return await self.get_value(self.message, self.bot)
-
+    def add_markup(self) -> None:
         self.add_year_bubbles()
         self.add_month_bubbles()
         self.add_week_bubbles()
         self.add_day_bubbles()
 
-        if self.additional_markup:
-            self.markup = merge_markup(self.markup, self.additional_markup)
-
-        await send_or_update_message(
-            self.message, self.bot, self.SELECT_DATE, self.markup
-        )
+        self.add_additional_markup()
 
 
 def _clear_calendar_data(message: Message) -> None:

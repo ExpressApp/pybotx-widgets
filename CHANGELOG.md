@@ -1,3 +1,15 @@
+## 0.6.0 (Aug 16, 2021)
+
+### Changed
+* **Breaking change:** change `display` method
+* Refactoring
+
+
+### Removed
+* **Breaking change:** remove  `merge_murkup` function from `service.py`
+---
+
+
 ## 0.5.1 (Aug 16, 2021)
 
 ### Changed

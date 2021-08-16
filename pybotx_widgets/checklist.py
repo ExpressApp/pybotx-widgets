@@ -1,17 +1,16 @@
 """Checklist widget."""
-from typing import Any, Optional, Sequence, Union, List
+from typing import Any, Sequence, Union, List
 
-from botx import BubbleElement, Message, MessageMarkup
+from botx import BubbleElement, Message
 
-from pybotx_widgets.base import Widget
+from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
-from pybotx_widgets.service import merge_markup, send_or_update_message
 
 SELECTED_ITEM_KEY = "checklist_selected_item"
 CHECKED_ITEMS_KEY = "checklist_checked_items"
 
 
-class MarkupMixin:
+class MarkupMixin(WidgetMarkup):
     CHECKBOX_CHECKED: str
     CHECKBOX_UNCHECKED: str
 
@@ -19,7 +18,6 @@ class MarkupMixin:
     message: Message
     widget_content: Sequence
 
-    markup = MessageMarkup()
     checked_items: list
 
     def get_checkbox_emoji(self, content_item: Any) -> str:
@@ -34,7 +32,7 @@ class MarkupMixin:
     def add_item(self, value: Union[list, str]) -> None:
         """Add checkbox item."""
 
-        self.markup.bubbles.append(value)
+        self.widget_msg.markup.bubbles.append(value)
 
     def add_row(self, row: Sequence) -> None:
         """Add buttons row into markup."""
@@ -52,7 +50,7 @@ class MarkupMixin:
             )
         self.add_item(buttons_row)
 
-    def add_markup(self) -> None:
+    def add_checkboxes(self) -> None:
         """Generate markup for Checklist widget."""
 
         for content_item in self.widget_content:
@@ -90,11 +88,25 @@ class CheckListWidget(Widget, MarkupMixin):
         """
         super().__init__(*args, **kwargs)
         self.widget_content = widget_content
-        self.label = label
+        self.widget_msg.text = label
 
-        self.markup = MessageMarkup()
         self.selected_item = self.message.data.get(SELECTED_ITEM_KEY)
         self.checked_items = self.message.data.get(CHECKED_ITEMS_KEY, [])
+
+        self.set_widget_data()
+
+    def set_widget_data(self) -> None:
+        """Set widget related data into message.data."""
+
+        if not self.selected_item:
+            return
+
+        if self.selected_item in self.checked_items:
+            self.checked_items.remove(self.selected_item)
+        else:
+            self.checked_items.append(self.selected_item)
+
+        self.message.data[CHECKED_ITEMS_KEY] = self.checked_items
 
     @classmethod
     def get_value(cls, message: Message) -> str:
@@ -104,22 +116,6 @@ class CheckListWidget(Widget, MarkupMixin):
     def get_checked_items(cls, message: Message) -> List[str]:
         return message.data.get(CHECKED_ITEMS_KEY, [])
 
-    async def display(self) -> Optional[str]:
-        """Show checklist and return selected item."""
-
-        if self.selected_item:
-            if self.selected_item in self.checked_items:
-                self.checked_items.remove(self.selected_item)
-            else:
-                self.checked_items.append(self.selected_item)
-
-            self.message.data[CHECKED_ITEMS_KEY] = self.checked_items
-
-        self.add_markup()
-
-        if self.additional_markup:
-            self.markup = merge_markup(self.markup, self.additional_markup)
-
-        await send_or_update_message(self.message, self.bot, self.label, self.markup)
-
-        return self.get_value(self.message) if self.selected_item else None
+    def add_markup(self) -> None:
+        self.add_checkboxes()
+        self.add_additional_markup()
