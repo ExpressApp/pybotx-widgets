@@ -1,3 +1,11 @@
+## 0.5.1 (Aug 16, 2021)
+
+### Changed
+* **Breaking change:** change `Checktable` and `Checklist` widgets implementation to class
+
+---
+
+
 ## 0.5.0 (Aug 3, 2021)
 
 ### Changed

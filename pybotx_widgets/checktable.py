@@ -1,8 +1,7 @@
 from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
-from botx import Bot, Message, MessageMarkup
+from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
-from pybotx_widgets.service import merge_markup, send_or_update_message
 from pybotx_widgets.undefined import Undefined, undefined
 from pydantic import BaseModel, root_validator
 
@@ -27,7 +26,7 @@ class CheckboxContent(BaseModel, Generic[T]):
         arbitrary_types_allowed = True
 
     @root_validator(pre=True)
-    def is_checkbox_value_exist_in_mapping(cls, values):
+    def is_checkbox_value_exist_in_mapping(cls, values: Dict[str, Any]):
         mapping = values.get("mapping")
         checkbox_value = values.get("checkbox_value")
         if (
@@ -42,71 +41,86 @@ class CheckboxContent(BaseModel, Generic[T]):
         return values
 
 
-def get_value_text(checkbox: CheckboxContent) -> str:
-    """Get value text for button."""
-    if checkbox.checkbox_value is None:
-        return strings.EMPTY
+class MarkupMixin(WidgetMarkup):
+    CHECKBOX_CHECKED: str = strings.CHECKBOX_CHECKED
+    CHECKBOX_UNCHECKED: str = strings.CHECKBOX_UNCHECKED
+    EMPTY: str = strings.EMPTY
+    FILL_LABEL: str = strings.FILL_LABEL
+    CHOOSE_LABEL: str = strings.CHOOSE_LABEL
 
-    is_undefined = isinstance(checkbox.checkbox_value, Undefined)
+    checkboxes: List[CheckboxContent]
+    uncheck_command: str
 
-    if checkbox.mapping:
+    def get_button_value_text(self, checkbox: CheckboxContent) -> str:
+        """Get value text for button."""
+
+        if checkbox.checkbox_value is None:
+            return self.EMPTY
+
+        is_undefined = isinstance(checkbox.checkbox_value, Undefined)
+
+        if checkbox.mapping:
+            if is_undefined:
+                return self.CHOOSE_LABEL
+            return checkbox.mapping[checkbox.checkbox_value]
+
         if is_undefined:
-            return strings.CHOOSE_LABEL
-        return checkbox.mapping[checkbox.checkbox_value]
+            return self.FILL_LABEL
 
-    if is_undefined:
-        return strings.FILL_LABEL
+        return checkbox.checkbox_value
 
-    return checkbox.checkbox_value
+    def add_checkboxes(self) -> None:
+        """Add checkbox."""
 
+        for checkbox in self.checkboxes:
+            checkbox.data = checkbox.data or {}
 
-def add_checkboxes(
-    checkboxes: List[CheckboxContent], uncheck_command: str
-) -> MessageMarkup:
-    """Add checkbox."""
-    markup = MessageMarkup()
+            if isinstance(checkbox.checkbox_value, Undefined):
+                checkbox_status = self.CHECKBOX_UNCHECKED
+            else:
+                checkbox_status = self.CHECKBOX_CHECKED
 
-    for checkbox in checkboxes:
-        checkbox.data = checkbox.data or {}
+            checkbox_text = f"{checkbox_status} {checkbox.label}"
 
-        if isinstance(checkbox.checkbox_value, Undefined):
-            checkbox_status = strings.CHECKBOX_UNCHECKED
-        else:
-            checkbox_status = strings.CHECKBOX_CHECKED
+            value_text = self.get_button_value_text(checkbox)
 
-        checkbox_text = f"{checkbox_status} {checkbox.label}"
+            self.markup.add_bubble(self.uncheck_command, checkbox_text, data=checkbox.data)
+            self.markup.add_bubble(
+                checkbox.command, value_text, new_row=False, data=checkbox.data
+            )
 
-        value_text = get_value_text(checkbox)
-
-        markup.add_bubble(uncheck_command, checkbox_text, data=checkbox.data)
-        markup.add_bubble(
-            checkbox.command, value_text, new_row=False, data=checkbox.data
-        )
-
-    return markup
+    def add_markup(self) -> None:
+        self.add_checkboxes()
+        self.add_additional_markup()
 
 
-async def checktable(
-    message: Message,
-    bot: Bot,
-    checkboxes: List[CheckboxContent],
-    label: str,
-    uncheck_command: str,
-    additional_markup: MessageMarkup = None,
-) -> None:
-    """Create checktable widget.
+class ChecktableWidget(Widget, MarkupMixin):
+    def __init__(
+        self,
+        checkboxes: List[CheckboxContent],
+        label: str,
+        uncheck_command: str,
+        *args: Any,
+        **kwargs: Any
+    ):
+        """Create checktable widget.
 
-    :param message - botx Message
-    :param bot - botx Bot
-    :param checkboxes - All content to be displayed
-    :param label - Text of message
-    :param uncheck_command - Command for handler which uncheck value
-    :param additional_markup - Additional markup for attaching to widget
-    """
+        :param checkboxes - All content to be displayed
+        :param label - Text of message
+        :param uncheck_command - Command for handler which uncheck value
+        """
+        super().__init__(*args, **kwargs)
 
-    markup = add_checkboxes(checkboxes, uncheck_command)
+        self.checkboxes = checkboxes
+        self.label = label
+        self.uncheck_command = uncheck_command
 
-    if additional_markup:
-        markup = merge_markup(markup, additional_markup)
+    async def send_widget_message(self):
+        self.widget_msg.text = self.label
+        self.widget_msg.markup = self.markup
 
-    await send_or_update_message(message, bot, label, markup)
+        await self.send_or_update_message(self.widget_msg)
+
+    async def display(self) -> None:
+        self.add_markup()
+        await self.send_widget_message()
