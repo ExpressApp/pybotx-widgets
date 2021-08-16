@@ -26,7 +26,7 @@ class CheckboxContent(BaseModel, Generic[T]):
         arbitrary_types_allowed = True
 
     @root_validator(pre=True)
-    def is_checkbox_value_exist_in_mapping(cls, values: dict):
+    def is_checkbox_value_exist_in_mapping(cls, values: Dict[str, Any]):
         mapping = values.get("mapping")
         checkbox_value = values.get("checkbox_value")
         if (
@@ -51,7 +51,7 @@ class MarkupMixin(WidgetMarkup):
     checkboxes: List[CheckboxContent]
     uncheck_command: str
 
-    def get_btn_value_text(self, checkbox: CheckboxContent) -> str:
+    def get_button_value_text(self, checkbox: CheckboxContent) -> str:
         """Get value text for button."""
 
         if checkbox.checkbox_value is None:
@@ -82,7 +82,7 @@ class MarkupMixin(WidgetMarkup):
 
             checkbox_text = f"{checkbox_status} {checkbox.label}"
 
-            value_text = self.get_btn_value_text(checkbox)
+            value_text = self.get_button_value_text(checkbox)
 
             self.markup.add_bubble(self.uncheck_command, checkbox_text, data=checkbox.data)
             self.markup.add_bubble(
