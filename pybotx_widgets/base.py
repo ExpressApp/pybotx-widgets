@@ -48,6 +48,7 @@ class Widget:
         self.command = command
         self.additional_markup = additional_markup
 
+        self.widget_msg = SendingMessage.from_message(message=message)
         self.markup = MessageMarkup()
 
     async def display(self) -> Optional[Any]:
