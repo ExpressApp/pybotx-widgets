@@ -1,5 +1,4 @@
 """Calendar widget."""
-
 import re
 from calendar import Calendar
 from collections import Callable
@@ -211,11 +210,11 @@ class CalendarWidget(Widget, MarkupMixin):
         self.month_to_display = self.message.data.get(MONTH_TO_DISPLAY_KEY)
         self.selected_date = self.message.data.get(SELECTED_DATE_KEY)
         self.widget_msg.text = self.SELECT_DATE
+        self.current_date = self.get_current_date()
 
-    @property
-    def current_date(self) -> date:
+    def get_current_date(self) -> date:
         arg = self.message.command.single_argument
-        arrows_regexp = "|".join([self.LEFT_ARROW, self.RIGHT_ARROW])
+        arrows_regexp = f"{self.LEFT_ARROW}|{self.RIGHT_ARROW}"
 
         if re.findall(arrows_regexp, arg) and self.month_to_display:
             return parser.parse(self.month_to_display).date()

@@ -2,7 +2,6 @@
 
 ### Changed
 * **Breaking change:** change `display` method
-* Refactoring
 
 
 ### Removed
