@@ -5,9 +5,7 @@ from botx import (
     Bot,
     Message,
     MessageMarkup,
-    SendingCredentials,
     SendingMessage,
-    UpdatePayload,
 )
 
 
@@ -66,24 +64,14 @@ class Widget:
     ) -> None:
         """Send new message or update exist."""
 
-        current_message_id = self.message.data.get("message_id")
-        new_message_id = new_message_id or uuid4()
+        message_id = self.message.data.get("message_id")
+        is_message_id_exists = bool(message_id)
 
-        for bubbles in widget_msg.markup.bubbles:
-            for bubble in bubbles:
-                bubble.data["message_id"] = current_message_id or new_message_id
+        message_id = new_message_id or message_id or uuid4()
 
-        if current_message_id:
-            payload = UpdatePayload(text=widget_msg.text, file=widget_msg.file)
-            payload.set_markup(markup=widget_msg.markup)
-            await self.bot.update_message(
-                SendingCredentials(
-                    sync_id=current_message_id,
-                    bot_id=self.message.bot_id,
-                    host=self.message.host,
-                ),
-                update=payload,
-            )
-        else:
-            widget_msg.credentials.message_id = new_message_id
-            await self.bot.send(widget_msg)
+        widget_msg.credentials.message_id = message_id
+
+        widget_msg.metadata = {**self.message.data, "message_id": message_id}
+        await self.bot.send(
+            widget_msg, update=is_message_id_exists
+        )

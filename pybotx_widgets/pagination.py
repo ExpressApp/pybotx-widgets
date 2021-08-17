@@ -127,9 +127,6 @@ class PaginationWidget(Widget, MarkupMixin):
         widget_markup = self.widget_msg.markup
 
         for message_id, widget_message in self.display_content:
-            if "message_id" in self.message.data:
-                self.message.command.data["message_id"] = message_id
-
             widget_message = widget_message or self.empty_msg
 
             if message_id == self.message_ids[-1]:

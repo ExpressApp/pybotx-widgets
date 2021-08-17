@@ -1,3 +1,9 @@
+## 0.6.1 (Aug 17, 2021)
+
+### Changed
+* refactoring `send_or_update_message` method to use metadata
+---
+
 ## 0.6.0 (Aug 16, 2021)
 
 ### Changed
