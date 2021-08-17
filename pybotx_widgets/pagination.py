@@ -39,7 +39,7 @@ class MarkupMixin(WidgetMarkup):
             left_num=left_border + 1, right_num=self.start_from
         )
 
-        self.markup.add_bubble(
+        self.widget_msg.markup.add_bubble(
             label=label,
             command=self.command,
             data={
@@ -62,7 +62,7 @@ class MarkupMixin(WidgetMarkup):
             left_num=left_border + 1, right_num=right_border
         )
 
-        self.markup.add_bubble(
+        self.widget_msg.markup.add_bubble(
             label=label,
             command=self.command,
             new_row=False,
@@ -71,12 +71,6 @@ class MarkupMixin(WidgetMarkup):
                 MESSAGE_IDS_KEY: self.message_ids,
             },
         )
-
-    def add_control_markup(self) -> None:
-        """Get markup with Backward/Forward buttons to control widget."""
-
-        self.add_backward_btn()
-        self.add_forward_btn()
 
 
 class PaginationWidget(Widget, MarkupMixin):
@@ -88,6 +82,11 @@ class PaginationWidget(Widget, MarkupMixin):
         *args: Any,
         **kwargs: Any
     ):
+        """
+        :param widget_content - All content to be displayed
+        :param paginate_by - Count of content to be displayed
+        :param delay_between_messages - Delay between multiple messages
+        """
         super().__init__(*args, **kwargs)
 
         self.widget_content = widget_content
@@ -106,6 +105,8 @@ class PaginationWidget(Widget, MarkupMixin):
 
     @property
     def display_content(self) -> PaginatedContent:
+        """Paginated content to be displayed."""
+
         if self.content_len < self.paginate_by:
             return zip_longest(self.message_ids, self.widget_content)
 
@@ -114,7 +115,17 @@ class PaginationWidget(Widget, MarkupMixin):
         ]
         return zip_longest(self.message_ids, display_content)
 
-    async def send_widget_content(self) -> None:
+    def add_markup(self) -> None:
+        """Get markup with Backward/Forward buttons to control widget."""
+
+        if self.content_len > self.paginate_by:
+            self.add_backward_btn()
+            self.add_forward_btn()
+
+    async def send_widget_message(self) -> None:
+        """Send multiple paginated messages."""
+        widget_markup = self.widget_msg.markup
+
         for message_id, widget_message in self.display_content:
             if "message_id" in self.message.data:
                 self.message.command.data["message_id"] = message_id
@@ -122,16 +133,10 @@ class PaginationWidget(Widget, MarkupMixin):
             widget_message = widget_message or self.empty_msg
 
             if message_id == self.message_ids[-1]:
-                self.add_additional_markup()
                 widget_message.markup = self.merge_markup(
-                    widget_message.markup, self.markup
+                    widget_message.markup, widget_markup
                 )
+                self.add_additional_markup()
 
             await self.send_or_update_message(widget_message, message_id)
             await asyncio.sleep(self.delay_between_messages)
-
-    async def display(self) -> None:
-        if self.content_len > self.paginate_by:
-            self.add_control_markup()
-
-        await self.send_widget_content()

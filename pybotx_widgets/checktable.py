@@ -26,7 +26,7 @@ class CheckboxContent(BaseModel, Generic[T]):
         arbitrary_types_allowed = True
 
     @root_validator(pre=True)
-    def is_checkbox_value_exist_in_mapping(cls, values: Dict[str, Any]):
+    def is_checkbox_value_exist_in_mapping(cls, values: Dict[str, Any]) -> Dict[str, Any]:
         mapping = values.get("mapping")
         checkbox_value = values.get("checkbox_value")
         if (
@@ -70,7 +70,7 @@ class MarkupMixin(WidgetMarkup):
         return checkbox.checkbox_value
 
     def add_checkboxes(self) -> None:
-        """Add checkbox."""
+        """Add checkboxes."""
 
         for checkbox in self.checkboxes:
             checkbox.data = checkbox.data or {}
@@ -84,14 +84,10 @@ class MarkupMixin(WidgetMarkup):
 
             value_text = self.get_button_value_text(checkbox)
 
-            self.markup.add_bubble(self.uncheck_command, checkbox_text, data=checkbox.data)
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(self.uncheck_command, checkbox_text, data=checkbox.data)
+            self.widget_msg.markup.add_bubble(
                 checkbox.command, value_text, new_row=False, data=checkbox.data
             )
-
-    def add_markup(self) -> None:
-        self.add_checkboxes()
-        self.add_additional_markup()
 
 
 class ChecktableWidget(Widget, MarkupMixin):
@@ -112,15 +108,9 @@ class ChecktableWidget(Widget, MarkupMixin):
         super().__init__(*args, **kwargs)
 
         self.checkboxes = checkboxes
-        self.label = label
         self.uncheck_command = uncheck_command
+        self.widget_msg.text = label
 
-    async def send_widget_message(self):
-        self.widget_msg.text = self.label
-        self.widget_msg.markup = self.markup
-
-        await self.send_or_update_message(self.widget_msg)
-
-    async def display(self) -> None:
-        self.add_markup()
-        await self.send_widget_message()
+    def add_markup(self) -> None:
+        self.add_checkboxes()
+        self.add_additional_markup()

@@ -1,13 +1,13 @@
 """Carousel widget."""
 
 from itertools import cycle, islice
-from typing import Any, Iterator, Optional, Sequence, Tuple
+from typing import Any, Iterator, Sequence, Tuple, Optional
 
-from botx import Bot, BubbleElement, Message, MessageMarkup
+from botx import Bot, BubbleElement, Message
 
-from pybotx_widgets.base import Widget
+from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
-from pybotx_widgets.service import merge_markup, send_or_update_message
+from pybotx_widgets.service import send_or_update_message
 
 LEFT_PRESSED = "CAROUSEL_LEFT_BUTTON_PRESSED"
 RIGHT_PRESSED = "CAROUSEL_RIGHT_BUTTON_PRESSED"
@@ -51,21 +51,17 @@ class ValidationMixin:
                 raise ValueError("Right control label should have exactly two '{}'")
 
 
-class MarkupMixin:
+class MarkupMixin(WidgetMarkup):
     displayed_content: Iterator
 
     widget_content: Sequence
     displayed_content_count: int
     start_from: int
-    _start_from: int
     end: int
     loop: bool
-    show_numbers: bool
 
     message: Message
     command: str
-    additional_markup: MessageMarkup
-    markup: MessageMarkup
 
     content_len: int
     left_btn_label: str
@@ -86,7 +82,7 @@ class MarkupMixin:
         show_left_arrow, show_right_arrow = self.get_left_and_right_button_visibility()
 
         if show_left_arrow:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=self.message.command.command,
                 label=self.left_btn_label,
                 data={**self.message.data, SELECTED_VALUE_KEY: LEFT_PRESSED},
@@ -94,7 +90,7 @@ class MarkupMixin:
             )
 
         for content_item in self.displayed_content:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=self.command,
                 label=content_item,
                 data={**self.message.data, SELECTED_VALUE_KEY: content_item},
@@ -102,15 +98,12 @@ class MarkupMixin:
             )
 
         if show_right_arrow:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=self.message.command.command,
                 label=self.right_btn_label,
                 data={**self.message.data, SELECTED_VALUE_KEY: RIGHT_PRESSED},
                 new_row=False,
             )
-
-        if self.additional_markup:
-            self.markup = merge_markup(self.markup, self.additional_markup)
 
     def add_newline_markup(self) -> None:
         """Build newline markup for Carousel widget."""
@@ -124,7 +117,7 @@ class MarkupMixin:
 
         for content_item in self.displayed_content:
             if isinstance(content_item, (list, tuple, set)):
-                self.markup.bubbles.append(
+                self.widget_msg.markup.bubbles.append(
                     [
                         BubbleElement(
                             command=self.command,
@@ -136,7 +129,7 @@ class MarkupMixin:
                 )
                 continue
 
-            self.markup.bubbles.append(
+            self.widget_msg.markup.bubbles.append(
                 [
                     BubbleElement(
                         command=self.command,
@@ -147,7 +140,7 @@ class MarkupMixin:
             )
 
         if show_left_arrow:
-            self.markup.add_bubble(
+            self.widget_msg.markup.add_bubble(
                 command=self.message.command.command,
                 label=self.left_btn_label,
                 data={**self.message.data, SELECTED_VALUE_KEY: LEFT_PRESSED},
@@ -156,10 +149,7 @@ class MarkupMixin:
             right_arrow_bubble["new_row"] = False
 
         if show_right_arrow:
-            self.markup.add_bubble(**right_arrow_bubble)
-
-        if self.additional_markup:
-            self.markup = merge_markup(self.markup, self.additional_markup)
+            self.widget_msg.markup.add_bubble(**right_arrow_bubble)
 
 
 class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
@@ -198,7 +188,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         super().__init__(*args, **kwargs)
 
         self.widget_content = widget_content
-        self.label = label
+        self.widget_msg.text = label
         self._start_from = start_from
         self.displayed_content_count = displayed_content_count
         self.inline = inline
@@ -218,7 +208,6 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
 
         self.selected_val = self.message.data.get(SELECTED_VALUE_KEY, "")
         self._start_from = self.message.data.get(START_FROM_KEY, start_from)
-        self.markup = MessageMarkup()
         self.content_len = len(self.widget_content)
 
         if self.selected_val == LEFT_PRESSED:
@@ -226,12 +215,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         elif self.selected_val == RIGHT_PRESSED:
             self._start_from += displayed_content_count
 
-        # Set current position in message.data
-        self.message.data[START_FROM_KEY] = self._start_from
-
-        # Set selected_value_label and carousel_message_label for get_carousel_result
-        self.message.data[SELECTED_VALUE_LABEL_KEY] = self.SELECTED_VALUE_LABEL
-        self.message.data[MESSAGE_LABEL_KEY] = self.label
+        self.set_widget_data()
 
     @property
     def left_btn_label(self) -> str:
@@ -304,20 +288,23 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
 
         return selected_val
 
-    async def display(self) -> Optional[str]:
-        """Show carousel or return selected value."""
+    def set_widget_data(self) -> None:
+        """Set widget related data into message.data."""
 
-        if self.is_value_selected:
-            return await self.get_value(self.message, self.bot)
+        # Set current position in message.data
+        self.message.data[START_FROM_KEY] = self._start_from
 
+        # Set selected_value_label and carousel_message_label for get_carousel_result
+        self.message.data[SELECTED_VALUE_LABEL_KEY] = self.SELECTED_VALUE_LABEL
+        self.message.data[MESSAGE_LABEL_KEY] = self.widget_msg.text
+
+    def add_markup(self) -> None:
         if self.inline:
             self.add_inline_markup()
         else:
             self.add_newline_markup()
 
-        await send_or_update_message(
-            self.message, self.bot, self.label, markup=self.markup
-        )
+        self.add_additional_markup()
 
 
 def _clear_carousel_data(message: Message) -> None:

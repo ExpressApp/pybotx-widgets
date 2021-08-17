@@ -49,10 +49,3 @@ async def send_or_update_message(
         message.credentials.message_id = new_message_id
         message.markup = markup
         await bot.send(message)
-
-
-def merge_markup(primary: MessageMarkup, additional: MessageMarkup) -> MessageMarkup:
-    return MessageMarkup(
-        bubbles=(primary.bubbles + additional.bubbles),
-        keyboard=(primary.keyboard + additional.keyboard),
-    )

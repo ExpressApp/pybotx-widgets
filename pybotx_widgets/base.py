@@ -1,4 +1,4 @@
-from typing import Any, Optional, Union
+from typing import Optional, Union
 from uuid import UUID, uuid4
 
 from botx import (
@@ -12,12 +12,12 @@ from botx import (
 
 
 class WidgetMarkup:
-    markup: MessageMarkup
+    widget_msg: SendingMessage
     additional_markup: Optional[MessageMarkup]
 
     def add_additional_markup(self) -> None:
         if self.additional_markup:
-            self.markup = self.merge_markup(self.markup, self.additional_markup)
+            self.widget_msg.markup = self.merge_markup(self.widget_msg.markup, self.additional_markup)
 
     @classmethod
     def merge_markup(
@@ -49,10 +49,17 @@ class Widget:
         self.additional_markup = additional_markup
 
         self.widget_msg = SendingMessage.from_message(message=message)
-        self.markup = MessageMarkup()
 
-    async def display(self) -> Optional[Any]:
+    def add_markup(self) -> None:
+        """Add widget markup."""
         raise NotImplementedError
+
+    async def send_widget_message(self) -> None:
+        await self.send_or_update_message(self.widget_msg)
+
+    async def display(self) -> None:
+        self.add_markup()
+        await self.send_widget_message()
 
     async def send_or_update_message(
         self, widget_msg: SendingMessage, new_message_id: Union[str, UUID] = None
