@@ -1,7 +1,7 @@
 """Calendar widget."""
 import re
 from calendar import Calendar
-from collections import Callable
+from collections.abc import Callable
 from datetime import date
 from typing import Dict, List, Tuple, Any
 
