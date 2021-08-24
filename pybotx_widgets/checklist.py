@@ -45,7 +45,7 @@ class MarkupMixin(WidgetMarkup):
                 BubbleElement(
                     command=self.command,
                     label=f"{checkbox} {row_item}",
-                    data={**self.message.data, SELECTED_ITEM_KEY: row_item},
+                    data={SELECTED_ITEM_KEY: row_item},
                 )
             )
         self.add_item(buttons_row)
@@ -65,7 +65,7 @@ class MarkupMixin(WidgetMarkup):
                     BubbleElement(
                         command=self.command,
                         label=f"{checkbox} {content_item}",
-                        data={**self.message.data, SELECTED_ITEM_KEY: content_item},
+                        data={SELECTED_ITEM_KEY: content_item},
                     )
                 ]
             )

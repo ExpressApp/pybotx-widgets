@@ -1,3 +1,12 @@
+## 0.6.2 (Aug 23, 2021)
+
+### Fixed
+* Fix saving data into `message.data`
+
+### Changed
+* Update `README.md`
+---
+
 ## 0.6.1 (Aug 17, 2021)
 
 ### Changed

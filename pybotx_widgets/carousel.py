@@ -85,7 +85,7 @@ class MarkupMixin(WidgetMarkup):
             self.widget_msg.markup.add_bubble(
                 command=self.message.command.command,
                 label=self.left_btn_label,
-                data={**self.message.data, SELECTED_VALUE_KEY: LEFT_PRESSED},
+                data={SELECTED_VALUE_KEY: LEFT_PRESSED},
                 new_row=False,
             )
 
@@ -93,7 +93,7 @@ class MarkupMixin(WidgetMarkup):
             self.widget_msg.markup.add_bubble(
                 command=self.command,
                 label=content_item,
-                data={**self.message.data, SELECTED_VALUE_KEY: content_item},
+                data={SELECTED_VALUE_KEY: content_item},
                 new_row=False,
             )
 
@@ -101,7 +101,7 @@ class MarkupMixin(WidgetMarkup):
             self.widget_msg.markup.add_bubble(
                 command=self.message.command.command,
                 label=self.right_btn_label,
-                data={**self.message.data, SELECTED_VALUE_KEY: RIGHT_PRESSED},
+                data={SELECTED_VALUE_KEY: RIGHT_PRESSED},
                 new_row=False,
             )
 
@@ -112,7 +112,7 @@ class MarkupMixin(WidgetMarkup):
         right_arrow_bubble = {
             "command": self.message.command.command,
             "label": self.right_btn_label,
-            "data": {**self.message.data, SELECTED_VALUE_KEY: RIGHT_PRESSED},
+            "data": {SELECTED_VALUE_KEY: RIGHT_PRESSED},
         }
 
         for content_item in self.displayed_content:
@@ -122,7 +122,7 @@ class MarkupMixin(WidgetMarkup):
                         BubbleElement(
                             command=self.command,
                             label=row_item,
-                            data={**self.message.data, SELECTED_VALUE_KEY: row_item},
+                            data={SELECTED_VALUE_KEY: row_item},
                         )
                         for row_item in content_item
                     ]
@@ -134,7 +134,7 @@ class MarkupMixin(WidgetMarkup):
                     BubbleElement(
                         command=self.command,
                         label=content_item,
-                        data={**self.message.data, SELECTED_VALUE_KEY: content_item},
+                        data={SELECTED_VALUE_KEY: content_item},
                     )
                 ]
             )
@@ -143,7 +143,7 @@ class MarkupMixin(WidgetMarkup):
             self.widget_msg.markup.add_bubble(
                 command=self.message.command.command,
                 label=self.left_btn_label,
-                data={**self.message.data, SELECTED_VALUE_KEY: LEFT_PRESSED},
+                data={SELECTED_VALUE_KEY: LEFT_PRESSED},
             )
             # if left arrow displayed, then show right arrow inline
             right_arrow_bubble["new_row"] = False
@@ -292,11 +292,11 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         """Set widget related data into message.data."""
 
         # Set current position in message.data
-        self.message.data[START_FROM_KEY] = self._start_from
+        self.message.command.data[START_FROM_KEY] = self._start_from
 
         # Set selected_value_label and carousel_message_label for get_carousel_result
-        self.message.data[SELECTED_VALUE_LABEL_KEY] = self.SELECTED_VALUE_LABEL
-        self.message.data[MESSAGE_LABEL_KEY] = self.widget_msg.text
+        self.message.command.data[SELECTED_VALUE_LABEL_KEY] = self.SELECTED_VALUE_LABEL
+        self.message.command.data[MESSAGE_LABEL_KEY] = self.widget_msg.text
 
     def add_markup(self) -> None:
         if self.inline:
@@ -310,8 +310,8 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
 def _clear_carousel_data(message: Message) -> None:
     """Clear widget data from message.data."""
 
-    message.data.pop("message_id", None)
-    message.data.pop(SELECTED_VALUE_KEY, None)
-    message.data.pop(SELECTED_VALUE_LABEL_KEY, None)
-    message.data.pop(MESSAGE_LABEL_KEY, None)
-    message.data.pop(START_FROM_KEY, None)
+    message.command.data.pop("message_id", None)
+    message.command.data.pop(SELECTED_VALUE_KEY, None)
+    message.command.data.pop(SELECTED_VALUE_LABEL_KEY, None)
+    message.command.data.pop(MESSAGE_LABEL_KEY, None)
+    message.command.data.pop(START_FROM_KEY, None)
