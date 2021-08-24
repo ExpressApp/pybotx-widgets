@@ -49,13 +49,12 @@ class MarkupMixin(WidgetMarkup):
             self.widget_msg.markup.add_bubble(
                 command=f"{self.command} {self.LEFT_ARROW}",
                 label=self.LEFT_ARROW,
-                data={**self.message.data, MONTH_TO_DISPLAY_KEY: prev_year},
+                data={MONTH_TO_DISPLAY_KEY: prev_year},
             )
 
         self.widget_msg.markup.add_bubble(
             command="",
             label=str(self.current_date.year),
-            data=self.message.data,
             new_row=False,
         )
 
@@ -68,7 +67,7 @@ class MarkupMixin(WidgetMarkup):
             self.widget_msg.markup.add_bubble(
                 command=f"{self.command} {self.RIGHT_ARROW}",
                 label=self.RIGHT_ARROW,
-                data={**self.message.data, MONTH_TO_DISPLAY_KEY: next_year},
+                data={MONTH_TO_DISPLAY_KEY: next_year},
                 new_row=False,
             )
 
@@ -98,12 +97,11 @@ class MarkupMixin(WidgetMarkup):
             self.widget_msg.markup.add_bubble(
                 command=f"{self.command} {self.LEFT_ARROW}",
                 label=self.LEFT_ARROW,
-                data={**self.message.data, MONTH_TO_DISPLAY_KEY: prev_month},
+                data={MONTH_TO_DISPLAY_KEY: prev_month},
             )
         self.widget_msg.markup.add_bubble(
             command="",
             label=self.MONTHS[self.current_date.month],
-            data=self.message.data,
             new_row=False,
         )
 
@@ -116,7 +114,7 @@ class MarkupMixin(WidgetMarkup):
             self.widget_msg.markup.add_bubble(
                 command=f"{self.command} {self.RIGHT_ARROW}",
                 label=self.RIGHT_ARROW,
-                data={**self.message.data, MONTH_TO_DISPLAY_KEY: next_month},
+                data={MONTH_TO_DISPLAY_KEY: next_month},
                 new_row=False,
             )
 
@@ -156,16 +154,13 @@ class MarkupMixin(WidgetMarkup):
 
                 if show_day:
                     label = str(calendar_date.day)
-                    bubble_data = {
-                        **self.message.data,
-                        SELECTED_DATE_KEY: calendar_date,
-                    }
+                    bubble_data = {SELECTED_DATE_KEY: calendar_date}
                     bubble_command = f"{self.command} {calendar_date}"
 
                     append_row = True
                 else:
                     label = ""
-                    bubble_data = self.message.data
+                    bubble_data = {}
                     bubble_command = ""
 
                 calendar_dates_row.append(
@@ -260,5 +255,5 @@ class CalendarWidget(Widget, MarkupMixin):
 def _clear_calendar_data(message: Message) -> None:
     """Clear widget data form message.data."""
 
-    message.data.pop(MONTH_TO_DISPLAY_KEY, None)
-    message.data.pop(SELECTED_DATE_KEY, None)
+    message.command.data.pop(MONTH_TO_DISPLAY_KEY, None)
+    message.command.data.pop(SELECTED_DATE_KEY, None)
