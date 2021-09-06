@@ -1,11 +1,10 @@
 """Pagination widget."""
 import asyncio
 from itertools import zip_longest
-from typing import Iterator, List, Optional, Tuple, Any
+from typing import Any, Iterator, List, Optional, Tuple
 from uuid import UUID, uuid4
 
 from botx import SendingMessage
-
 from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
 from pybotx_widgets.resources.strings import FormatTemplate

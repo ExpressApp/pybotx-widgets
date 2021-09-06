@@ -3,12 +3,12 @@ import re
 from calendar import Calendar
 from collections.abc import Callable
 from datetime import date
-from typing import Dict, List, Tuple, Any
+from typing import Any, Dict, List, Tuple
 
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
 
-from botx import BubbleElement, Message, Bot
+from botx import Bot, BubbleElement, Message
 from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
 from pybotx_widgets.service import send_or_update_message
@@ -180,7 +180,7 @@ class CalendarWidget(Widget, MarkupMixin):
     RIGHT_ARROW = strings.RIGHT_ARROW
     AFTER_SELECT_TEXT = strings.CAL_DATE_SELECTED
     SELECT_DATE = strings.SELECT_DATE
-    WEEKDAYS = strings.WEEKDAYS
+    WEEKDAYS = strings.WEEKDAYS  # type: ignore
     MONTHS = strings.MONTHS
 
     def __init__(

@@ -1,0 +1,16 @@
+name: Python application
+on: push
+jobs:
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Setup
+        uses: ExpressApp/github-actions-poetry@v0.1
+
+      - name: Run lint
+        run: |
+          source .venv/bin/activate
+          ./scripts/lint
