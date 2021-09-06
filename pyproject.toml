@@ -1,11 +1,12 @@
 [tool.poetry]
 name = "pybotx-widgets"
-version = "0.6.2"
+version = "0.6.3"
 description = "Widgets for pybotx"
 authors = ["Tamirlan Dzhemirzoev", "Alexandr Samojlenko", "Vladimir Karabanov", "Samat Yunusov"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = ">=3.8, <3.10"
+botx = ">=0.17.0, <0.24.0"
 python-dateutil = "^2.8.1"
 mako = "^1.1.3"
 

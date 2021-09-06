@@ -1,7 +1,7 @@
 """Carousel widget."""
 
 from itertools import cycle, islice
-from typing import Any, Iterator, Sequence, Tuple, Optional
+from typing import Any, Iterator, Optional, Sequence, Tuple
 
 from botx import Bot, BubbleElement, Message
 
@@ -218,7 +218,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         self.set_widget_data()
 
     @property
-    def left_btn_label(self) -> str:
+    def left_btn_label(self) -> str:  # type: ignore
         """Left button label."""
         left_label = self._control_labels[0]
 
@@ -229,7 +229,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         return left_label
 
     @property
-    def right_btn_label(self) -> str:
+    def right_btn_label(self) -> str:  # type: ignore
         """Right button label."""
         right_label = self._control_labels[1]
 
@@ -243,7 +243,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         return right_label
 
     @property
-    def start_from(self) -> int:
+    def start_from(self) -> int:  # type: ignore
         """Count start position."""
 
         if self._start_from < 0 or self._start_from > self.content_len:
@@ -252,7 +252,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         return self._start_from
 
     @property
-    def end(self) -> int:
+    def end(self) -> int:  # type: ignore
         """Count end position."""
 
         return self.start_from + self.displayed_content_count
@@ -265,7 +265,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         )
 
     @property
-    def displayed_content(self) -> Iterator:
+    def displayed_content(self) -> Iterator:  # type: ignore
         if self.loop:
             # Loop content
             return islice(cycle(self.widget_content), self.start_from, self.end)
@@ -278,7 +278,7 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
         label = message.data[MESSAGE_LABEL_KEY]
 
         if not selected_val or selected_val in {LEFT_PRESSED, RIGHT_PRESSED}:
-            return
+            return None
 
         msg_text = cls.SELECTED_VALUE_LABEL.format(
             label=label, selected_val=selected_val

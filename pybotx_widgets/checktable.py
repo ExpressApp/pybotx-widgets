@@ -1,9 +1,10 @@
 from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
+from pydantic import BaseModel, root_validator
+
 from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
 from pybotx_widgets.undefined import Undefined, undefined
-from pydantic import BaseModel, root_validator
 
 T = TypeVar("T")  # noqa: WPS111
 
@@ -26,7 +27,9 @@ class CheckboxContent(BaseModel, Generic[T]):
         arbitrary_types_allowed = True
 
     @root_validator(pre=True)
-    def is_checkbox_value_exist_in_mapping(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+    def is_checkbox_value_exist_in_mapping(
+        cls, values: Dict[str, Any]
+    ) -> Dict[str, Any]:
         mapping = values.get("mapping")
         checkbox_value = values.get("checkbox_value")
         if (
@@ -67,7 +70,7 @@ class MarkupMixin(WidgetMarkup):
         if is_undefined:
             return self.FILL_LABEL
 
-        return checkbox.checkbox_value
+        return checkbox.checkbox_value  # type: ignore
 
     def add_checkboxes(self) -> None:
         """Add checkboxes."""
@@ -84,7 +87,9 @@ class MarkupMixin(WidgetMarkup):
 
             value_text = self.get_button_value_text(checkbox)
 
-            self.widget_msg.markup.add_bubble(self.uncheck_command, checkbox_text, data=checkbox.data)
+            self.widget_msg.markup.add_bubble(
+                self.uncheck_command, checkbox_text, data=checkbox.data
+            )
             self.widget_msg.markup.add_bubble(
                 checkbox.command, value_text, new_row=False, data=checkbox.data
             )
@@ -97,7 +102,7 @@ class ChecktableWidget(Widget, MarkupMixin):
         label: str,
         uncheck_command: str,
         *args: Any,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         """Create checktable widget.
 

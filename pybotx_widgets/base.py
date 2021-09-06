@@ -1,12 +1,7 @@
 from typing import Optional, Union
 from uuid import UUID, uuid4
 
-from botx import (
-    Bot,
-    Message,
-    MessageMarkup,
-    SendingMessage,
-)
+from botx import Bot, Message, MessageMarkup, SendingMessage
 
 
 class WidgetMarkup:
@@ -15,7 +10,9 @@ class WidgetMarkup:
 
     def add_additional_markup(self) -> None:
         if self.additional_markup:
-            self.widget_msg.markup = self.merge_markup(self.widget_msg.markup, self.additional_markup)
+            self.widget_msg.markup = self.merge_markup(
+                self.widget_msg.markup, self.additional_markup
+            )
 
     @classmethod
     def merge_markup(
@@ -72,6 +69,4 @@ class Widget:
         widget_msg.credentials.message_id = message_id
 
         widget_msg.metadata = {**self.message.data, "message_id": message_id}
-        await self.bot.send(
-            widget_msg, update=is_message_id_exists
-        )
+        await self.bot.send(widget_msg, update=is_message_id_exists)

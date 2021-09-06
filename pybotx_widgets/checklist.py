@@ -1,5 +1,5 @@
 """Checklist widget."""
-from typing import Any, Sequence, Union, List
+from typing import Any, List, Sequence, Union
 
 from botx import BubbleElement, Message
 
@@ -56,7 +56,7 @@ class MarkupMixin(WidgetMarkup):
         for content_item in self.widget_content:
             if isinstance(content_item, (list, tuple, set)):
                 # if markup is in table format, then add row with buttons
-                self.add_row(content_item)
+                self.add_row(content_item)  # type: ignore
                 continue
 
             checkbox = self.get_checkbox_emoji(content_item)
@@ -75,13 +75,7 @@ class CheckListWidget(Widget, MarkupMixin):
     CHECKBOX_CHECKED = strings.CHECKBOX_CHECKED
     CHECKBOX_UNCHECKED = strings.CHECKBOX_UNCHECKED
 
-    def __init__(
-        self,
-        widget_content: Sequence,
-        label: str,
-        *args: Any,
-        **kwargs: Any
-    ):
+    def __init__(self, widget_content: Sequence, label: str, *args: Any, **kwargs: Any):
         """
         :param widget_content - All content to be displayed
         :param label - Text of message
