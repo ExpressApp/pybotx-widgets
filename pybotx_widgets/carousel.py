@@ -4,6 +4,7 @@ from itertools import cycle, islice
 from typing import Any, Iterator, Optional, Sequence, Tuple
 
 from botx import Bot, BubbleElement, Message
+
 from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
 from pybotx_widgets.service import send_or_update_message

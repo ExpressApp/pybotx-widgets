@@ -1,3 +1,12 @@
+## 0.6.3 (Sep 6, 2021)
+
+### Added
+* Github actions for CI
+
+
+### Fixed
+* Fix linter's warnings
+
 ## 0.6.2 (Aug 23, 2021)
 
 ### Fixed

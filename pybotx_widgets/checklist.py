@@ -2,6 +2,7 @@
 from typing import Any, List, Sequence, Union
 
 from botx import BubbleElement, Message
+
 from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
 

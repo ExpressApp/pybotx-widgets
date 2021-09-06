@@ -1,9 +1,10 @@
 from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
+from pydantic import BaseModel, root_validator
+
 from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
 from pybotx_widgets.undefined import Undefined, undefined
-from pydantic import BaseModel, root_validator
 
 T = TypeVar("T")  # noqa: WPS111
 
