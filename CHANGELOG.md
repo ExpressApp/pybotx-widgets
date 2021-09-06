@@ -2,10 +2,11 @@
 
 ### Added
 * Github actions for CI
-
+* Added pybotx dependency to pyproject.toml (need for linter)
 
 ### Fixed
 * Fix linter's warnings
+___
 
 ## 0.6.2 (Aug 23, 2021)
 
