@@ -235,7 +235,9 @@ class CalendarWidget(Widget, MarkupMixin):
         prev_year = (self.current_date - relativedelta(years=1)).replace(
             month=month, day=1
         )
-        next_year = (self.current_date + relativedelta(years=1)).replace(month=1, day=1)
+        next_year = (  # noqa: WPS221
+            self.current_date + relativedelta(years=1)
+        ).replace(month=1, day=1)
         return prev_year, next_year
 
     def get_prev_and_next_month(self) -> Tuple[date, date]:

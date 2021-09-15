@@ -8,7 +8,6 @@ from botx import SendingMessage
 
 from pybotx_widgets.base import Widget, WidgetMarkup
 from pybotx_widgets.resources import strings
-from pybotx_widgets.resources.strings import FormatTemplate
 
 START_FROM_KEY = "pagination_start_from"
 MESSAGE_IDS_KEY = "pagination_message_ids"
@@ -18,8 +17,12 @@ PaginatedContent = Iterator[Tuple[UUID, Optional[SendingMessage]]]
 
 
 class MarkupMixin(WidgetMarkup):
-    BACKWARD_BTN_TEMPLATE: FormatTemplate = strings.PAGINATION_BACKWARD_BTN_TEMPLATE
-    FORWARD_BTN_TEMPLATE: FormatTemplate = strings.PAGINATION_FORWARD_BTN_TEMPLATE
+    BACKWARD_BTN_TEMPLATE: strings.FormatTemplate = (
+        strings.PAGINATION_BACKWARD_BTN_TEMPLATE
+    )
+    FORWARD_BTN_TEMPLATE: strings.FormatTemplate = (
+        strings.PAGINATION_FORWARD_BTN_TEMPLATE
+    )
 
     paginate_by: int
     start_from: int
