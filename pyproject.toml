@@ -6,7 +6,7 @@ authors = ["Tamirlan Dzhemirzoev", "Alexandr Samojlenko", "Vladimir Karabanov", 
 
 [tool.poetry.dependencies]
 python = ">=3.8, <3.10"
-botx = ">=0.17.0, <0.24.0"
+botx = ">=0.17.0, <0.24.1"
 python-dateutil = "^2.8.1"
 mako = "^1.1.3"
 
