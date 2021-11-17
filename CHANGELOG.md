@@ -1,3 +1,9 @@
+## 0.6.4 (Nov 17, 2021)
+
+### Changed
+* Method of message sending
+---
+
 ## 0.6.3 (Sep 6, 2021)
 
 ### Added
@@ -6,7 +12,7 @@
 
 ### Fixed
 * Fix linter's warnings
-___
+---
 
 ## 0.6.2 (Aug 23, 2021)
 

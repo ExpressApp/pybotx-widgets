@@ -310,7 +310,6 @@ class CarouselWidget(Widget, ValidationMixin, MarkupMixin):
 def _clear_carousel_data(message: Message) -> None:
     """Clear widget data from message.data."""
 
-    message.command.data.pop("message_id", None)
     message.command.data.pop(SELECTED_VALUE_KEY, None)
     message.command.data.pop(SELECTED_VALUE_LABEL_KEY, None)
     message.command.data.pop(MESSAGE_LABEL_KEY, None)

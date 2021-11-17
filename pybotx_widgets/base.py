@@ -1,5 +1,4 @@
-from typing import Optional, Union
-from uuid import UUID, uuid4
+from typing import Optional
 
 from botx import Bot, Message, MessageMarkup, SendingMessage
 
@@ -56,17 +55,13 @@ class Widget:
         self.add_markup()
         await self.send_widget_message()
 
-    async def send_or_update_message(
-        self, widget_msg: SendingMessage, new_message_id: Union[str, UUID] = None
-    ) -> None:
+    async def send_or_update_message(self, widget_msg: SendingMessage) -> None:
         """Send new message or update exist."""
 
-        message_id = self.message.data.get("message_id")
-        is_message_id_exists = bool(message_id)
+        is_pybotx_widget = self.message.metadata.get("pybotx_widget")
 
-        message_id = new_message_id or message_id or uuid4()
+        if is_pybotx_widget:
+            widget_msg.credentials.message_id = self.message.source_sync_id
 
-        widget_msg.credentials.message_id = message_id
-
-        widget_msg.metadata = {**self.message.data, "message_id": message_id}
-        await self.bot.send(widget_msg, update=is_message_id_exists)
+        widget_msg.metadata = {**self.message.data, "pybotx_widget": 1}
+        await self.bot.send(widget_msg, update=is_pybotx_widget)

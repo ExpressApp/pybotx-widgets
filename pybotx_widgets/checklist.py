@@ -85,7 +85,7 @@ class CheckListWidget(Widget, MarkupMixin):
         self.widget_msg.text = label
 
         self.selected_item = self.message.data.get(SELECTED_ITEM_KEY)
-        self.checked_items = self.message.data.get(CHECKED_ITEMS_KEY, [])
+        self.checked_items = self.message.metadata.get(CHECKED_ITEMS_KEY, [])
 
         self.set_widget_data()
 
@@ -100,7 +100,7 @@ class CheckListWidget(Widget, MarkupMixin):
         else:
             self.checked_items.append(self.selected_item)
 
-        self.message.data[CHECKED_ITEMS_KEY] = self.checked_items
+        self.message.metadata[CHECKED_ITEMS_KEY] = self.checked_items
 
     @classmethod
     def get_value(cls, message: Message) -> str:
@@ -108,7 +108,7 @@ class CheckListWidget(Widget, MarkupMixin):
 
     @classmethod
     def get_checked_items(cls, message: Message) -> List[str]:
-        return message.data.get(CHECKED_ITEMS_KEY, [])
+        return message.metadata.get(CHECKED_ITEMS_KEY, [])
 
     def add_markup(self) -> None:
         self.add_checkboxes()

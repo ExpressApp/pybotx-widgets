@@ -1,8 +1,7 @@
 """Pagination widget."""
 import asyncio
-from itertools import zip_longest
-from typing import Any, Iterator, List, Optional, Tuple
-from uuid import UUID, uuid4
+from typing import Any, List
+from uuid import UUID
 
 from botx import SendingMessage
 
@@ -11,9 +10,6 @@ from pybotx_widgets.resources import strings
 
 START_FROM_KEY = "pagination_start_from"
 MESSAGE_IDS_KEY = "pagination_message_ids"
-
-
-PaginatedContent = Iterator[Tuple[UUID, Optional[SendingMessage]]]
 
 
 class MarkupMixin(WidgetMarkup):
@@ -45,10 +41,7 @@ class MarkupMixin(WidgetMarkup):
         self.widget_msg.markup.add_bubble(
             label=label,
             command=self.command,
-            data={
-                START_FROM_KEY: left_border,
-                MESSAGE_IDS_KEY: self.message_ids,
-            },
+            data={START_FROM_KEY: left_border},
         )
 
     def add_forward_btn(self) -> None:
@@ -69,10 +62,7 @@ class MarkupMixin(WidgetMarkup):
             label=label,
             command=self.command,
             new_row=False,
-            data={
-                START_FROM_KEY: left_border,
-                MESSAGE_IDS_KEY: self.message_ids,
-            },
+            data={START_FROM_KEY: left_border},
         )
 
 
@@ -101,22 +91,13 @@ class PaginationWidget(Widget, MarkupMixin):
             text=strings.EMPTY_MSG_SYMBOL, message=self.message
         )
         self.start_from = self.message.data.get(START_FROM_KEY, 0)
-        self.message_ids = self.message.data.get(MESSAGE_IDS_KEY)
-
-        min_len = min(paginate_by, self.content_len)
-        self.message_ids = self.message_ids or [uuid4() for _ in range(min_len)]
+        self.message_ids = self.message.metadata.get(MESSAGE_IDS_KEY, [])
 
     @property
-    def display_content(self) -> PaginatedContent:
+    def display_content(self) -> List[SendingMessage]:
         """Paginated content to be displayed."""
 
-        if self.content_len < self.paginate_by:
-            return zip_longest(self.message_ids, self.widget_content)
-
-        display_content = self.widget_content[
-            self.start_from : self.start_from + self.paginate_by
-        ]
-        return zip_longest(self.message_ids, display_content)
+        return self.widget_content[self.start_from : self.start_from + self.paginate_by]
 
     def add_markup(self) -> None:
         """Get markup with Backward/Forward buttons to control widget."""
@@ -126,17 +107,53 @@ class PaginationWidget(Widget, MarkupMixin):
             self.add_forward_btn()
 
     async def send_widget_message(self) -> None:
+        """Send or update multiple paginated messages."""
+
+        if self.message_ids:
+            await self._update_widget_messages()
+        else:
+            await self._send_new_widget_messages()
+
+    async def _send_new_widget_messages(self) -> None:
         """Send multiple paginated messages."""
-        widget_markup = self.widget_msg.markup
 
-        for message_id, widget_message in self.display_content:
-            widget_message = widget_message or self.empty_msg
+        display_content = self.display_content
+        if not display_content:
+            return
 
-            if message_id == self.message_ids[-1]:
-                widget_message.markup = self.merge_markup(
-                    widget_message.markup, widget_markup
-                )
-                self.add_additional_markup()
-
-            await self.send_or_update_message(widget_message, message_id)
+        for widget_message in display_content[:-1]:
+            message_id = await self.bot.send(widget_message)
+            self.message_ids.append(message_id)
             await asyncio.sleep(self.delay_between_messages)
+
+        last_widget_message = display_content[-1]
+        self._prepare_last_message(last_widget_message)
+        await self.bot.send(last_widget_message)
+
+    async def _update_widget_messages(self) -> None:
+        """Update multiple paginated messages."""
+
+        display_content = self.display_content
+        for index in range(self.paginate_by - 1):
+            try:
+                widget_message = display_content[index]
+            except IndexError:
+                widget_message = self.empty_msg
+
+            widget_message.credentials.message_id = self.message_ids[index]
+            await self.bot.send(widget_message, update=True)
+            await asyncio.sleep(self.delay_between_messages)
+
+        try:
+            last_widget_message = display_content[index + 1]  # noqa: WPS441
+        except IndexError:
+            last_widget_message = self.empty_msg
+
+        self._prepare_last_message(last_widget_message)
+        last_widget_message.credentials.message_id = self.message.source_sync_id
+        await self.bot.send(last_widget_message, update=True)
+
+    def _prepare_last_message(self, message: SendingMessage) -> None:
+        self.add_additional_markup()
+        message.markup = self.merge_markup(message.markup, self.widget_msg.markup)
+        message.metadata = {**message.metadata, MESSAGE_IDS_KEY: self.message_ids}
