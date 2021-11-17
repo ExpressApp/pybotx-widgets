@@ -1,7 +1,6 @@
 """Widgets services."""
 
-from typing import Optional, Union
-from uuid import UUID, uuid4
+from typing import Optional
 
 from botx import (
     Bot,
@@ -20,32 +19,24 @@ async def send_or_update_message(
     text: Optional[str],
     markup: MessageMarkup = None,
     msg_file: File = None,
-    new_message_id: Union[str, UUID] = None,
 ) -> None:
     """Send new message or update exist."""
 
-    current_message_id = message.data.get("message_id")
-    new_message_id = new_message_id or uuid4()
+    is_pybotx_widget = message.data.get("pybotx_widget")
 
-    if markup:
-        for bubbles in markup.bubbles:
-            for bubble in bubbles:
-                bubble.data["message_id"] = current_message_id or new_message_id
-    else:
-        markup = MessageMarkup()
+    markup = markup or MessageMarkup()
 
-    if current_message_id:
+    if is_pybotx_widget:
         payload = UpdatePayload(text=text, file=msg_file)
         payload.set_markup(markup=markup)
 
         await bot.update_message(
             SendingCredentials(
-                sync_id=current_message_id, bot_id=message.bot_id, host=message.host
+                sync_id=message.source_sync_id, bot_id=message.bot_id, host=message.host
             ),
             update=payload,
         )
     else:
         message = SendingMessage.from_message(text=text, file=msg_file, message=message)
-        message.credentials.message_id = new_message_id
         message.markup = markup
         await bot.send(message)
